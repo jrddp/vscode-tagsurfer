@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import { surroundWithTag } from "./surroundWithTag";
 import { jumpToMatchingPair } from "./jumpToMatchingPair";
+import { surroundWithTag } from "./surroundWithTag";
 
 export function activate(context: vscode.ExtensionContext) {
   let surroundDisposable = vscode.commands.registerCommand(
