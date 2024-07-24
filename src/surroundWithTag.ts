@@ -10,8 +10,19 @@ export async function surroundWithTag() {
   }
 
   const document = editor.document;
-  const selection = editor.selection;
+  let selection = editor.selection;
   const startPos = selection.start;
+
+  // adjust selections with trailing cursor on next line (happens when selecting with mouse)
+  if (selection.start.line !== selection.end.line && selection.end.character === 0) {
+    // set to end of previous line
+    const newEnd = new vscode.Position(
+      selection.end.line - 1,
+      document.lineAt(selection.end.line - 1).text.length
+    );
+    selection = new vscode.Selection(selection.start, newEnd);
+  }
+
   const selectionType = getSelectionType(selection, document);
   const tagName = selectionType === "inline" || selectionType === "multiInline" ? "span" : "div";
 
