@@ -21,7 +21,21 @@
         "command": "tagSurfer.jumpToMatchingPair",
         "title": "TagSurfer: Jump to Matching Pair"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "TagSurfer",
+      "properties": {
+        "tagSurfer.defaultInlineTag": {
+          "type": "string",
+          "default": "span",
+          "description": "Default tag for surrounding inline selections"
+        },
+        "tagSurfer.defaultBlockTag": {
+          "type": "string",
+          "default": "div",
+          "description": "Default tag for surrounding block selections"
+        }
+      }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",

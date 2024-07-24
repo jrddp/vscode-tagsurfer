@@ -3,6 +3,10 @@ import { getSelectionType } from "./utils/selectionUtils";
 import { wrapContent } from "./utils/tagUtils";
 
 export async function surroundWithTag() {
+  const config = vscode.workspace.getConfiguration("tagSurfer");
+  const blockTag = config.get("defaultBlockTag", "div");
+  const inlineTag = config.get("defaultInlineTag", "span");
+
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     vscode.window.showErrorMessage("No active text editor");
@@ -24,7 +28,8 @@ export async function surroundWithTag() {
   }
 
   const selectionType = getSelectionType(selection, document);
-  const tagName = selectionType === "inline" || selectionType === "multiInline" ? "span" : "div";
+
+  const tagName = selectionType === "inline" ? inlineTag : blockTag;
 
   let newPosition: vscode.Position;
   await editor.edit(
