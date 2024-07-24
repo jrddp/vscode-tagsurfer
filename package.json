@@ -36,6 +36,7 @@
           "description": "Default tag for surrounding block selections"
         }
       }
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",
