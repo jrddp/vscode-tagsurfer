@@ -13,7 +13,7 @@ export async function surroundWithTag() {
   const selection = editor.selection;
   const startPos = selection.start;
   const selectionType = getSelectionType(selection, document);
-  const tagName = selectionType === "inline" ? "span" : "div";
+  const tagName = selectionType === "inline" || selectionType === "multiInline" ? "span" : "div";
 
   let newPosition: vscode.Position;
   await editor.edit(
@@ -23,11 +23,12 @@ export async function surroundWithTag() {
 
       switch (selectionType) {
         case "inline":
+        case "multiInline":
           const inlineResult = wrapContent(editor, tagName, selectedText, true);
           editBuilder.replace(selectionRange, inlineResult);
           newPosition = new vscode.Position(startPos.line, startPos.character + 1);
           break;
-        case "multiLine":
+        case "multiFullLine":
         case "fullLine":
           const blockResult = wrapContent(editor, tagName, selectedText, false);
           const lenFirstLine = blockResult.split("\n")[0].length;

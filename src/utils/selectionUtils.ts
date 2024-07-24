@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-type SelectionType = "none" | "inline" | "fullLine" | "multiLine";
+type SelectionType = "none" | "inline" | "fullLine" | "multiFullLine" | "multiInline";
 
 export function getSelectionType(
   selection: vscode.Selection,
@@ -11,13 +11,10 @@ export function getSelectionType(
   }
   const start = selection.start;
   const end = selection.end;
-  if (start.line !== end.line) {
-    return "multiLine";
-  }
   if (start.character === 0 && end.character === document.lineAt(end.line).text.length) {
-    return "fullLine";
+    return start.line === end.line ? "fullLine" : "multiFullLine";
   }
-  return "inline";
+  return start.line === end.line ? "inline" : "multiInline";
 }
 
 export function getClosestSurroundingTag(
