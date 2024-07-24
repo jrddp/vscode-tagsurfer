@@ -16,6 +16,13 @@ export function getCurrentIndentation(content: string): string {
   return indentation;
 }
 
+export function indentContent(content: string, indentation: string): string {
+  return content
+    .split("\n")
+    .map(line => indentation + line)
+    .join("\n");
+}
+
 export function wrapContent(
   editor: TextEditor,
   tagName: string,
@@ -25,9 +32,8 @@ export function wrapContent(
   if (inline) {
     return `<${tagName}>${content}</${tagName}>`;
   } else {
-    const indentation = getCurrentIndentation(content);
-    return `${indentation}<${tagName}>\n${getIndentationString(
-      editor
-    )}${content}\n${indentation}</${tagName}>`;
+    const existingIndentation = getCurrentIndentation(content);
+    const indentedContent = indentContent(content, getIndentationString(editor));
+    return `${existingIndentation}<${tagName}>\n${indentedContent}\n${existingIndentation}</${tagName}>`;
   }
 }
