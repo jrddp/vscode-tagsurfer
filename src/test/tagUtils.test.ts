@@ -102,7 +102,6 @@ suite("Tag Utils Test Suite: jumpToMatchingPair", () => {
     edit.replace(uri, new vscode.Range(0, 0, document.lineCount, 0), content);
     await vscode.workspace.applyEdit(edit);
     document = await vscode.workspace.openTextDocument(uri);
-    console.log("Document content:\n", document.getText());
     return document;
   }
 
@@ -110,7 +109,7 @@ suite("Tag Utils Test Suite: jumpToMatchingPair", () => {
     const doc = await createTestDocument('<div class="test">Hello</div>');
     const result = getEnclosingTag(doc, new vscode.Position(0, 5));
     assert.strictEqual(result?.tagName, "div");
-    assert.strictEqual(result?.isClosing, false);
+    assert.strictEqual(result?.tagType, "opening");
     assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 0, 0, 18));
   });
 
@@ -118,7 +117,7 @@ suite("Tag Utils Test Suite: jumpToMatchingPair", () => {
     const doc = await createTestDocument("<div>Hello</div>");
     const result = getEnclosingTag(doc, new vscode.Position(0, 12));
     assert.strictEqual(result?.tagName, "div");
-    assert.strictEqual(result?.isClosing, true);
+    assert.strictEqual(result?.tagType, "closing");
     assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 10, 0, 16));
   });
 
@@ -134,7 +133,15 @@ suite("Tag Utils Test Suite: jumpToMatchingPair", () => {
     );
     const result = getEnclosingTag(doc, new vscode.Position(1, 5));
     assert.strictEqual(result?.tagName, "div");
-    assert.strictEqual(result?.isClosing, false);
+    assert.strictEqual(result?.tagType, "opening");
     assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 0, 2, 20));
+  });
+
+  test("getEnclosingTag with self-closing tag", async () => {
+    const doc = await createTestDocument("<div>Hello<br/>World</div>");
+    const result = getEnclosingTag(doc, new vscode.Position(0, 12));
+    assert.strictEqual(result?.tagName, "br");
+    assert.strictEqual(result?.tagType, "selfClosing");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 10, 0, 15));
   });
 });

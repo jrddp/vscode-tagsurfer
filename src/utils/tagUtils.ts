@@ -41,7 +41,7 @@ export function wrapContent(
 export function getEnclosingTag(
   document: TextDocument,
   position: Position
-): { tagName: string; isClosing: boolean; tagRange: Range } | null {
+): { tagName: string; tagType: "opening" | "closing" | "selfClosing"; tagRange: Range } | null {
   const maxLines = 10; // Maximum number of lines to search in either direction
   let startLine = Math.max(0, position.line - maxLines);
   let endLine = Math.min(document.lineCount - 1, position.line + maxLines);
@@ -106,11 +106,19 @@ export function getEnclosingTag(
   }
 
   const tagName = tagNameMatch[1];
-  const isClosing = tagText.startsWith("</");
+  let tagType: "opening" | "closing" | "selfClosing";
+
+  if (tagText.startsWith("</")) {
+    tagType = "closing";
+  } else if (tagText.endsWith("/>")) {
+    tagType = "selfClosing";
+  } else {
+    tagType = "opening";
+  }
 
   return {
     tagName,
-    isClosing,
+    tagType,
     tagRange: new Range(startPosition, endPosition),
   };
 }
