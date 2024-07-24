@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { getClosestSurroundingTag, getSelectionType } from "./utils/selectionUtils";
+import { getSelectionType } from "./utils/selectionUtils";
 import { wrapContent } from "./utils/tagUtils";
 
 export async function surroundWithTag() {
@@ -11,29 +11,13 @@ export async function surroundWithTag() {
 
   const document = editor.document;
   const selection = editor.selection;
+  const startPos = selection.start;
+  const selectionType = getSelectionType(selection, document);
+  const tagName = selectionType === "inline" ? "span" : "div";
 
-  let tagName = await vscode.window.showInputBox({
-    prompt: "Enter tag name",
-    placeHolder: "div",
-  });
-
-  if (!tagName) {
-    tagName = "div"; // Default to div if no input
-  }
-
-  editor.edit(editBuilder => {
-    const selectionType = getSelectionType(selection, document);
-    if (selectionType === "none") {
-      // No selection, surround the closest tag
-      const closestTag = getClosestSurroundingTag(selection.active, document);
-      if (closestTag) {
-        const tagContent = document.getText(closestTag);
-        const newContent = wrapContent(editor, tagName, tagContent, true);
-        editBuilder.replace(closestTag, newContent);
-      } else {
-        vscode.window.showInformationMessage("No surrounding tag found");
-      }
-    } else {
+  let newPosition: vscode.Position;
+  await editor.edit(
+    editBuilder => {
       const selectionRange = new vscode.Range(selection.start, selection.end);
       const selectedText = document.getText(selectionRange);
 
@@ -41,20 +25,37 @@ export async function surroundWithTag() {
         case "inline":
           const inlineResult = wrapContent(editor, tagName, selectedText, true);
           editBuilder.replace(selectionRange, inlineResult);
+          newPosition = new vscode.Position(startPos.line, startPos.character + 1);
           break;
         case "multiLine":
         case "fullLine":
           const blockResult = wrapContent(editor, tagName, selectedText, false);
+          const lenFirstLine = blockResult.split("\n")[0].length;
           editBuilder.replace(selectionRange, blockResult);
+          newPosition = new vscode.Position(startPos.line, lenFirstLine - tagName.length - 1);
+          break;
+        case "none":
+          // No selection. Input tag at cursor.
+          const newContent = wrapContent(editor, tagName, "", true);
+          editBuilder.insert(selection.active, newContent);
+          newPosition = new vscode.Position(startPos.line, startPos.character + tagName.length + 2);
           break;
       }
-    }
-  });
-
-  // Move cursor inside the tag for easy renaming
-  const newPosition = new vscode.Position(
-    editor.selection.start.line,
-    editor.selection.start.character + tagName.length + 1
+    },
+    { undoStopBefore: false, undoStopAfter: true }
   );
-  editor.selection = new vscode.Selection(newPosition, newPosition);
+
+  // Force exit from Vim visual mode to normal mode
+  if (selectionType !== "none") {
+    try {
+      await vscode.commands.executeCommand("extension.vim_escape");
+    } catch (error) {
+      // Continue anyways if Vim not installed or escape fails
+    }
+  }
+
+  // Use setTimeout to ensure the edit has been applied before updating the selection
+  setImmediate(() => {
+    editor.selection = new vscode.Selection(newPosition, newPosition);
+  });
 }
