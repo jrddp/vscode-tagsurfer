@@ -1,71 +1,34 @@
-# tagsurfer README
+# TagSurfer
 
-This is the README for your extension "tagsurfer". After writing up a brief description, we recommend including the following sections.
+> Streamline tag creation and pair navigation in HTML, JSX, and more.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+### Surround with Tag
 
-For example if there is an image subfolder under your extension project workspace:
+Surrounds the selected text with a new tag.
 
-\!\[feature X\]\(images/feature-x.png\)
+- When surrounding an inline selection, the tag defaults to a `<span>` and surrounds selected text directly.
+- When surrounding a block selection, the tag defaults to a `<div>` and surrounds selected text on surrounding lines.
+  - These are both configurable via `tagSurfer.defaultBlockTag` and `tagSurfer.defaultInlineTag`.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+The cursor will be placed at the start of the name of the new opening tag, so it can be easily edited. I recommend using this alongside the Auto Rename Tag extension.
 
-## Requirements
+### Jump to Matching Pair
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+This combines the functionality of the Go to Matching Pair command from Emmet or Vim's '%' command.
 
-## Extension Settings
+- When the cursor is on some kind of bracket, it will jump to the matching bracket.
+- When the cursor is inside a tag, it will jump to the matching closing tag.
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+### Why use TagSurfer?
 
-For example:
+There are plenty of extensions that provide tag surrounding functionality, such as Surround with Tag, htmltagwrap, or Wrap It. I made this extension because I could not find one that didn't have one of these problems:
 
-This extension contributes the following settings:
+- Awkward formatting of surrounding tags
+- Glitchy behavior with VSCode's Vim extension
+- Clunky workflow when creating empty JSX tags
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+TagSurfer solves all of these problems.
 
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Similarly, I created the Jump to Matching Pair feature to avoid having seperate keybinds for Vim's '%' command and Emmet's 'Go to Matching Pair' command.
