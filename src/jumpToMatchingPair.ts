@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { getEnclosingTag, findPairedTag } from "./utils/tagUtils";
-import { getSelectionType } from "./utils/selectionUtils";
+import { getSelectionType, updateSelection } from "./utils/selectionUtils";
 import { Position, Range } from "vscode";
 import { allBrackets, findMatchingBracket } from "./utils/bracketUtils";
 
@@ -12,24 +12,28 @@ export function jumpToMatchingPair(): void {
   }
 
   const document = editor.document;
-  const selection = editor.selection;
-  const selectionType = getSelectionType(selection, document);
+  const oldSelection = editor.selection;
+  const selectionType = getSelectionType(oldSelection, document);
   let cursorPos: Position;
   if (selectionType === "fullLine" || selectionType === "multiFullLine") {
     cursorPos = new Position(
-      selection.active.line,
-      document.lineAt(selection.active.line).text.length - 1
+      oldSelection.active.line,
+      document.lineAt(oldSelection.active.line).text.length - 2
     );
   } else {
-    cursorPos = selection.active;
+    cursorPos = oldSelection.active;
+    if (selectionType !== "none" && !oldSelection.isReversed) {
+      cursorPos = cursorPos.translate(0, -1);
+    }
   }
 
   let character = document.getText(new Range(cursorPos, cursorPos.translate(0, 1)));
+  console.log(character);
 
   if (allBrackets.includes(character)) {
     const newPosition = findMatchingBracket(document, cursorPos, character);
     if (newPosition) {
-      editor.selection = new vscode.Selection(newPosition, newPosition);
+      updateSelection(editor, oldSelection, newPosition);
     }
     return;
   }
@@ -39,8 +43,8 @@ export function jumpToMatchingPair(): void {
   if (!enclosingTag) {
     // nothing found under cursor, try last position on line
     cursorPos = new Position(
-      selection.active.line,
-      document.lineAt(selection.active.line).text.length - 1
+      oldSelection.active.line,
+      document.lineAt(oldSelection.active.line).text.length - 1
     );
     character = document.getText(new Range(cursorPos, cursorPos.translate(0, 1)));
 
@@ -62,7 +66,7 @@ export function jumpToMatchingPair(): void {
   }
 
   const newPosition = pairedTag.tagRange.start.translate(0, 1);
-  editor.selection = new vscode.Selection(newPosition, newPosition);
+  updateSelection(editor, oldSelection, newPosition);
 
   editor.revealRange(new vscode.Range(newPosition, newPosition));
 }
