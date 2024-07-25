@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { getSetting } from "./config";
 
 export function insertSelfClosingTag(editor: vscode.TextEditor): void {
-  const defaultTagName = "div";
+  const defaultTagName = getSetting("defaultSelfClosingTag");
   const autoRename = getSetting("autoRename");
 
   editor

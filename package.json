@@ -41,6 +41,16 @@
           "type": "string",
           "default": "div",
           "description": "Default tag for surrounding block selections"
+        },
+        "tagSurfer.autoRename": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, will automatically open rename symbol prompt after creating tags."
+        },
+        "tagSurfer.defaultSelfClosingTag": {
+          "type": "string",
+          "default": "div",
+          "description": "Default tag for inserting self-closing tags"
         }
       }
     }
