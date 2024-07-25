@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { getEnclosingTag, findPairedTag } from "./utils/tagUtils";
-import { getSelectionType, updateSelection } from "./utils/selectionUtils";
+import { getSelectionType, isBlock, updateSelection } from "./utils/selectionUtils";
 import { Position, Range } from "vscode";
 import { allBrackets, findMatchingBracket } from "./utils/bracketUtils";
 
@@ -12,61 +12,74 @@ export function jumpToMatchingPair(): void {
   }
 
   const document = editor.document;
-  const oldSelection = editor.selection;
-  const selectionType = getSelectionType(oldSelection, document);
-  let cursorPos: Position;
-  if (selectionType === "fullLine" || selectionType === "multiFullLine") {
-    cursorPos = new Position(
-      oldSelection.active.line,
-      document.lineAt(oldSelection.active.line).text.length - 2
-    );
-  } else {
-    cursorPos = oldSelection.active;
-    if (selectionType !== "none" && !oldSelection.isReversed) {
-      cursorPos = cursorPos.translate(0, -1);
-    }
-  }
+  const selection = editor.selection;
+  const selectionType = getSelectionType(selection, document);
 
-  let character = document.getText(new Range(cursorPos, cursorPos.translate(0, 1)));
-  console.log(character);
+  // not block level. use active cursor position and prioritize brackets
+  if (!isBlock(selectionType)) {
+    const cursorPos = selection.active;
+    const character = document.getText(new Range(cursorPos, cursorPos.translate(0, 1)));
 
-  if (allBrackets.includes(character)) {
-    const newPosition = findMatchingBracket(document, cursorPos, character);
-    if (newPosition) {
-      updateSelection(editor, oldSelection, newPosition);
-    }
-    return;
-  }
-
-  let enclosingTag = getEnclosingTag(document, cursorPos);
-
-  if (!enclosingTag) {
-    // nothing found under cursor, try last position on line
-    cursorPos = new Position(
-      oldSelection.active.line,
-      document.lineAt(oldSelection.active.line).text.length - 1
-    );
-    character = document.getText(new Range(cursorPos, cursorPos.translate(0, 1)));
-
-    if (allBrackets.includes(character)) {
-      const newPosition = findMatchingBracket(document, cursorPos, character);
-      if (newPosition) {
-        editor.selection = new vscode.Selection(newPosition, newPosition);
-      }
+    if (attemptBracketJump(editor, selection, cursorPos, character)) {
       return;
     }
+
+    if (attempTagJump(editor, selection, cursorPos)) {
+      return;
+    }
+  }
+
+  // cursor position failed or selection is block level. use end of line and prioritize tags
+  const cursorPos = new Position(
+    selection.active.line,
+    document.lineAt(selection.active.line).text.length - 1
+  );
+  const character = document.getText(new Range(cursorPos, cursorPos.translate(0, 1)));
+
+  if (attempTagJump(editor, selection, cursorPos)) {
     return;
   }
 
-  const pairedTag = findPairedTag(document, enclosingTag);
-
-  if (!pairedTag) {
-    vscode.window.showInformationMessage("No matching pair found for the current tag.");
+  if (attemptBracketJump(editor, selection, cursorPos, character)) {
     return;
   }
+}
 
-  const newPosition = pairedTag.tagRange.start.translate(0, 1);
-  updateSelection(editor, oldSelection, newPosition);
+function attemptBracketJump(
+  editor: vscode.TextEditor,
+  selection: vscode.Selection,
+  cursorPos: Position,
+  character: string
+): boolean {
+  if (allBrackets.includes(character)) {
+    const newPosition = findMatchingBracket(editor.document, cursorPos, character);
+    if (newPosition) {
+      updateSelection(editor, selection, newPosition);
+      return true;
+    } else {
+      vscode.window.showInformationMessage(`Unable to find matching pair for '${character}'.`);
+    }
+  }
+  return false;
+}
 
-  editor.revealRange(new vscode.Range(newPosition, newPosition));
+function attempTagJump(
+  editor: vscode.TextEditor,
+  selection: vscode.Selection,
+  cursorPos: Position
+): boolean {
+  const enclosingTag = getEnclosingTag(editor.document, cursorPos);
+  if (enclosingTag) {
+    const pairedTag = findPairedTag(editor.document, enclosingTag);
+    if (pairedTag) {
+      const newPosition = pairedTag.tagRange.start.translate(0, 1);
+      updateSelection(editor, selection, newPosition);
+      return true;
+    } else {
+      vscode.window.showInformationMessage(
+        `Unable to find matching pair for <${enclosingTag.tagName}>.`
+      );
+    }
+  }
+  return false;
 }

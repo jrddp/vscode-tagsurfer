@@ -3,6 +3,10 @@ import { Position, Selection } from "vscode";
 
 type SelectionType = "none" | "inline" | "fullLine" | "multiFullLine" | "multiInline";
 
+export function isBlock(type: SelectionType): boolean {
+  return type === "fullLine" || type === "multiFullLine";
+}
+
 export function getSelectionType(
   selection: vscode.Selection,
   document: vscode.TextDocument
@@ -49,7 +53,7 @@ export function updateSelection(
   switch (selectionType) {
     case "none":
       editor.selection = new Selection(newPosition, newPosition);
-      return;
+      break;
     case "inline":
     case "multiInline":
       if (oldSelection.isReversed) {
@@ -65,7 +69,7 @@ export function updateSelection(
           editor.selection = new Selection(oldStart.translate(0, 1), newPosition);
         }
       }
-      return;
+      break;
 
     case "fullLine":
     case "multiFullLine":
@@ -81,6 +85,8 @@ export function updateSelection(
         const newEnd = new Position(newLine.lineNumber, newLine.text.length);
         editor.selection = new Selection(oldStart, newEnd);
       }
-      return;
+      break;
   }
+
+  editor.revealRange(new vscode.Range(newPosition, newPosition));
 }
