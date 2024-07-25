@@ -120,6 +120,22 @@ suite("Tag Utils Test Suite: jumpToMatchingPair", () => {
     assert.strictEqual(result, null);
   });
 
+  test("getEnclosingTag with cursor on open bracket", async () => {
+    const doc = await createTestDocument("<div>Hello</div>");
+    const result = getEnclosingTag(doc, new vscode.Position(0, 0));
+    assert.strictEqual(result?.tagName, "div");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 0, 0, 5));
+  });
+
+  test("getEnclosingTag with cursor on closing bracket", async () => {
+    const doc = await createTestDocument("<div>Hello</div>");
+    const result = getEnclosingTag(doc, new vscode.Position(0, 4));
+    assert.strictEqual(result?.tagName, "div");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 0, 0, 5));
+  });
+
   test("getEnclosingTag with multi-line tag", async () => {
     const doc = await createTestDocument(
       '<div\n    class="test"\n    id="multi-line">\nHello\n</div>'

@@ -67,7 +67,9 @@ export function getEnclosingTag(document: TextDocument, position: Position): Tag
         }
         nestingLevel--;
       } else if (line[j] === ">") {
-        nestingLevel++;
+        if (i !== position.line || j !== startChar) {
+          nestingLevel++;
+        }
       }
     }
     if (startPosition) {
@@ -92,7 +94,9 @@ export function getEnclosingTag(document: TextDocument, position: Position): Tag
         }
         nestingLevel--;
       } else if (line[j] === "<") {
-        nestingLevel++;
+        if (i !== position.line || j !== startChar) {
+          nestingLevel++;
+        }
       }
     }
     if (endPosition) {
