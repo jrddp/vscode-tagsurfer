@@ -2,7 +2,7 @@
 
 <h2 align="center">Streamline tag creation and navigation in HTML, JSX, and more.</h2>
 
-## Features
+## Commands
 
 ### Surround with Tag
 
@@ -21,17 +21,17 @@ This combines the functionality of the Go to Matching Pair command from Emmet or
 - When the cursor is on some kind of bracket, it will jump to the matching bracket.
 - When the cursor is inside a tag, it will jump to the matching closing tag.
 
-**Additional notes:**
+*Additional notes:*
 
 - If there is no bracket or tag under the cursor, it will use the bracket at the end of the line. This allows, for example, jumping to the end of a function while hovering over its name.
 - If you have a full line selected, it will also jump as if you were hovering over the end of the line. This allows you to very easily select entire functions.
 
-### Why use TagSurfer?
+## Don't other extensions already do these things?
 
-There are plenty of extensions that provide tag surrounding functionality, such as Surround with Tag, htmltagwrap, or Wrap It. I made this extension because I could not find one that didn't have one of these problems:
+There are plenty of extensions that provide tag surrounding functionality, such as Surround with Tag, htmltagwrap, or Wrap It. I made this extension to avoid the following:
 
-- Awkward formatting of surrounding tags
-- Glitchy behavior with VSCode's Vim extension
+- Awkward formatting when creating tags
+- Incompatibility with VSCode's Vim extension
 - Clunky workflow when creating empty JSX tags
 
 TagSurfer solves all of these problems.
