@@ -21,10 +21,18 @@ This combines the functionality of the Go to Matching Pair command from Emmet or
 - When the cursor is on some kind of bracket, it will jump to the matching bracket.
 - When the cursor is inside a tag, it will jump to the matching closing tag.
 
-*Additional notes:*
+_Additional notes:_
 
 - If there is no bracket or tag under the cursor, it will use the bracket at the end of the line. This allows, for example, jumping to the end of a function while hovering over its name.
 - If you have a full line selected, it will also jump as if you were hovering over the end of the line. This allows you to very easily select entire functions.
+
+## Configuration
+
+- `tagSurfer.defaultInlineTag`: Default tag for surrounding inline selections (string, default: "span")
+- `tagSurfer.defaultBlockTag`: Default tag for surrounding block selections (string, default: "div")
+- `tagSurfer.defaultSelfClosingTag`: Default tag for inserting self-closing tags (string, default: "div")
+- `tagSurfer.autoRename`: If true, will automatically open rename prompt after creating tags. (boolean, default: false)
+  - I prefer to leave this off and change the tag type manually so that I can have intellisense.
 
 ## Don't other extensions already do these things?
 

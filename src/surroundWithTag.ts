@@ -1,11 +1,12 @@
 import * as vscode from "vscode";
 import { getSelectionType } from "./utils/selectionUtils";
 import { wrapContent } from "./utils/tagUtils";
+import { getSetting } from "./config";
 
 export async function surroundWithTag() {
-  const config = vscode.workspace.getConfiguration("tagSurfer");
-  const blockTag = config.get("defaultBlockTag", "div");
-  const inlineTag = config.get("defaultInlineTag", "span");
+  const blockTag = getSetting("defaultBlockTag");
+  const inlineTag = getSetting("defaultInlineTag");
+  const autoRename = getSetting("autoRename");
 
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
@@ -71,8 +72,11 @@ export async function surroundWithTag() {
     }
   }
 
-  // Use setTimeout to ensure the edit has been applied before updating the selection
+  // setImmediate ensures the edit has been applied before updating the selection
   setImmediate(() => {
     editor.selection = new vscode.Selection(newPosition, newPosition);
+    if (autoRename) {
+      setImmediate(() => vscode.commands.executeCommand("editor.action.rename"));
+    }
   });
 }
