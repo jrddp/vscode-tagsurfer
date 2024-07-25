@@ -1,12 +1,14 @@
 import { Position, TextDocument } from "vscode";
 
+export const openBrackets = "([{<";
+export const closeBrackets = ")]}>";
+export const allBrackets = openBrackets + closeBrackets;
+
 export function findMatchingBracket(
   document: TextDocument,
   startPosition: Position,
   bracket: string
 ): Position | null {
-  const openBrackets = "([{<";
-  const closeBrackets = ")]}>";
   const isOpenBracket = openBrackets.includes(bracket);
   const matchIndex = isOpenBracket ? openBrackets.indexOf(bracket) : closeBrackets.indexOf(bracket);
   const matchBracket = isOpenBracket ? closeBrackets[matchIndex] : openBrackets[matchIndex];
