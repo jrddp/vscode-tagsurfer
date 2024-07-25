@@ -10,7 +10,6 @@ Surrounds the selected text with a new tag.
 
 - When surrounding an inline selection, the tag defaults to a `<span>` and surrounds selected text directly.
 - When surrounding a block selection, the tag defaults to a `<div>` and surrounds selected text on surrounding lines.
-  - These are both configurable via `tagSurfer.defaultBlockTag` and `tagSurfer.defaultInlineTag`.
 
 The cursor will be placed at the start of the name of the new opening tag, so it can be easily edited. I recommend using this alongside the Auto Rename Tag extension.
 
@@ -25,6 +24,10 @@ _Additional notes:_
 
 - If there is no bracket or tag under the cursor, it will use the bracket at the end of the line. This allows, for example, jumping to the end of a function while hovering over its name.
 - If you have a full line selected, it will also jump as if you were hovering over the end of the line. This allows you to very easily select entire functions.
+
+### Insert Self-Closing Tag
+
+Inserts a self-closing tag at the cursor position.
 
 ## Configuration
 

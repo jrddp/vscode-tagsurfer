@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { jumpToMatchingPair } from "./jumpToMatchingPair";
 import { surroundWithTag } from "./surroundWithTag";
+import { insertSelfClosingTag } from "./insertSelfClosingTag";
 
 export function activate(context: vscode.ExtensionContext) {
   let surroundDisposable = vscode.commands.registerCommand(
@@ -11,8 +12,12 @@ export function activate(context: vscode.ExtensionContext) {
     "tagSurfer.jumpToMatchingPair",
     jumpToMatchingPair
   );
+  let selfClosingDisposable = vscode.commands.registerTextEditorCommand(
+    "tagSurfer.insertSelfClosingTag",
+    insertSelfClosingTag
+  );
 
-  context.subscriptions.push(surroundDisposable, jumpDisposable);
+  context.subscriptions.push(surroundDisposable, jumpDisposable, selfClosingDisposable);
 }
 
 export function deactivate() {}

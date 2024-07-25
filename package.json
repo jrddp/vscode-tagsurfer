@@ -23,6 +23,10 @@
       {
         "command": "tagSurfer.jumpToMatchingPair",
         "title": "TagSurfer: Jump to Matching Pair"
+      },
+      {
+        "command": "tagSurfer.insertSelfClosingTag",
+        "title": "TagSurfer: Insert Self-Closing Tag"
       }
     ],
     "configuration": {
