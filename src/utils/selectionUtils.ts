@@ -1,5 +1,4 @@
-import * as vscode from "vscode";
-import { Position, Selection } from "vscode";
+import { Position, Range, Selection, TextDocument, TextEditor } from "vscode";
 
 type SelectionType = "none" | "inline" | "fullLine" | "multiFullLine" | "multiInline";
 
@@ -7,10 +6,7 @@ export function isBlock(type: SelectionType): boolean {
   return type === "fullLine" || type === "multiFullLine";
 }
 
-export function getSelectionType(
-  selection: vscode.Selection,
-  document: vscode.TextDocument
-): SelectionType {
+export function getSelectionType(selection: Selection, document: TextDocument): SelectionType {
   if (selection.isEmpty) {
     return "none";
   }
@@ -22,10 +18,7 @@ export function getSelectionType(
   return start.line === end.line ? "inline" : "multiInline";
 }
 
-export function getClosestSurroundingTag(
-  position: vscode.Position,
-  document: vscode.TextDocument
-): vscode.Range | null {
+export function getClosestSurroundingTag(position: Position, document: TextDocument): Range | null {
   // This is a simplified implementation. A more robust version would use a parser.
   const line = document.lineAt(position.line).text;
   let startTag = line.lastIndexOf("<", position.character);
@@ -35,14 +28,11 @@ export function getClosestSurroundingTag(
     return null;
   }
 
-  return new vscode.Range(
-    new vscode.Position(position.line, startTag),
-    new vscode.Position(position.line, endTag + 1)
-  );
+  return new Range(new Position(position.line, startTag), new Position(position.line, endTag + 1));
 }
 
 export function updateSelection(
-  editor: vscode.TextEditor,
+  editor: TextEditor,
   oldSelection: Selection,
   newPosition: Position
 ): void {
@@ -88,5 +78,31 @@ export function updateSelection(
       break;
   }
 
-  editor.revealRange(new vscode.Range(newPosition, newPosition));
+  editor.revealRange(new Range(newPosition, newPosition));
+}
+
+// adds range in order while also merging with existing ranges
+// assumes ascending order of given ranges
+export function addToRanges(ranges: Range[], newRange: Range): void {
+  let intersects = false;
+  for (let i = 0; i < ranges.length; i++) {
+    if (newRange.intersection(ranges[i])) {
+      ranges[i] = ranges[i].union(newRange);
+      // also check intersection of next range in case it intersects with both
+      if (i < ranges.length - 1 && ranges[i].intersection(ranges[i + 1])) {
+        ranges[i] = ranges[i].union(ranges[i + 1]);
+        ranges.splice(i + 1, 1);
+      }
+      return;
+    }
+  }
+
+  // find index to insert new range in order
+  let insertIndex = ranges.findIndex(range => range.start.isAfterOrEqual(newRange.start));
+  if (insertIndex === -1) {
+    insertIndex = ranges.length;
+  }
+
+  // Insert the new range
+  ranges.splice(insertIndex, 0, newRange);
 }
