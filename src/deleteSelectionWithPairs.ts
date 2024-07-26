@@ -1,14 +1,11 @@
 import * as vscode from "vscode";
 import { findPairedTag, getAllTagsInSelection } from "./utils/tagUtils";
 import { findPairedBracketPos, getAllBracketsInSelection } from "./utils/bracketUtils";
-import { Range, TextEditorDecorationType } from "vscode";
+import { Position, Range, Selection, TextEditorDecorationType } from "vscode";
+import { applyLineDeletions, generateLineDeletions } from "./utils/deletionUtils";
+import { getSelectionType } from "./utils/selectionUtils";
 
-const pinkHighlight = vscode.window.createTextEditorDecorationType({
-  backgroundColor: "#FEF08A",
-  border: "1px solid #000000",
-});
-
-export function deleteSelectionWithMatchingPairs() {
+export async function deleteSelectionWithMatchingPairs() {
   // output current selection start and end
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
@@ -89,21 +86,31 @@ export function deleteSelectionWithMatchingPairs() {
     return true;
   });
 
+  // ensure deletion of full line for full line selections
+  const selectionType = getSelectionType(
+    new Selection(effectiveSelection.start, effectiveSelection.end),
+    editor.document
+  );
+  if (selectionType === "multiFullLine" || selectionType === "fullLine") {
+    effectiveSelection = new Range(
+      effectiveSelection.start,
+      new Position(effectiveSelection.end.line + 1, 0)
+    );
+  }
+
+  const lineDeletions = generateLineDeletions(editor.document, pairRanges);
+
   // delete those son of a guns!!
   editor.edit(
-    editBuiler => {
-      editBuiler.delete(effectiveSelection);
-      for (const range of pairRanges) {
-        editBuiler.delete(range);
-      }
+    editBuilder => {
+      editBuilder.delete(effectiveSelection);
+      applyLineDeletions(editBuilder, lineDeletions);
     },
     { undoStopBefore: false, undoStopAfter: true }
   );
 
-  // editor.setDecorations(pinkHighlight, pairRanges);
-
-  // setTimeout(() => {
-  //   editor.setDecorations(pinkHighlight, []);
-  //   pinkHighlight.dispose();
-  // }, 3000);
+  // return to normal mode if using Vscode Vim
+  try {
+    await vscode.commands.executeCommand("extension.vim_escape");
+  } catch (error) {}
 }

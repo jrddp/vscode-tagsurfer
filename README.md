@@ -25,9 +25,14 @@ _Additional notes:_
 - If there is no bracket or tag under the cursor, it will use the bracket at the end of the line. This allows, for example, jumping to the end of a function while hovering over its name.
 - If you have a full line selected, it will also jump as if you were hovering over the end of the line. This allows you to very easily select entire functions.
 
+
+## Delete Selection with Matching Pairs
+
+Deletes current selection along with any matching tags or brackets. Will also clean up any empty lines from the pair delections.
+
 ## Delete Surrounding Tag Pair
 
-Deletes the tag pair surrounding the cursor and cleans up any leftover whitespace.
+Deletes the tag pair surrounding the cursor and cleans up any leftover empty lines.
 
 ## Insert Self-Closing Tag
 

@@ -1,7 +1,8 @@
-import { Range, Position, TextDocument } from "vscode";
+import { Range, Position, TextDocument, TextEditorEdit } from "vscode";
 import { addToRanges } from "./selectionUtils";
 
 interface LineDeletion {
+  line: number;
   ranges: Range[];
   fullDelete: boolean;
 }
@@ -10,7 +11,7 @@ interface LineDeletion {
 export function generateLineDeletions(
   document: TextDocument,
   originalRanges: Range[]
-): { [key: number]: LineDeletion } {
+): LineDeletion[] {
   const lineDeletions: { [key: number]: LineDeletion } = {};
 
   for (const orange of originalRanges) {
@@ -20,7 +21,7 @@ export function generateLineDeletions(
     if (orange.isSingleLine) {
       const line = orange.start.line;
       if (!lineDeletions[line]) {
-        lineDeletions[line] = { ranges: [orange], fullDelete: false };
+        lineDeletions[line] = { line: line, ranges: [orange], fullDelete: false };
       } else {
         addToRanges(lineDeletions[line].ranges, orange);
       }
@@ -35,19 +36,19 @@ export function generateLineDeletions(
       const endLineRange = new Range(new Position(endLine, 0), orange.end);
 
       if (!lineDeletions[startLine]) {
-        lineDeletions[startLine] = { ranges: [startLineRange], fullDelete: false };
+        lineDeletions[startLine] = { line: startLine, ranges: [startLineRange], fullDelete: false };
       } else {
         addToRanges(lineDeletions[startLine].ranges, startLineRange);
       }
       if (!lineDeletions[endLine]) {
-        lineDeletions[endLine] = { ranges: [endLineRange], fullDelete: false };
+        lineDeletions[endLine] = { line: endLine, ranges: [endLineRange], fullDelete: false };
       } else {
         addToRanges(lineDeletions[endLine].ranges, endLineRange);
       }
 
       // full delete all inner lines
       for (let line = orange.start.line + 1; line < orange.end.line; line++) {
-        lineDeletions[line] = { ranges: [], fullDelete: true };
+        lineDeletions[line] = { line: line, ranges: [], fullDelete: true };
       }
     }
   }
@@ -64,7 +65,7 @@ export function generateLineDeletions(
     }
   }
 
-  return lineDeletions;
+  return Object.values(lineDeletions);
 }
 
 // simulates deleting ranges from text
@@ -79,4 +80,23 @@ export function deleteRangesFromLine(text: string, ranges: Range[]): string {
   }
 
   return text;
+}
+
+export function applyLineDeletions(
+  editBuilder: TextEditorEdit,
+  lineDeletions: LineDeletion[]
+): void {
+  for (const deletion of lineDeletions) {
+    if (deletion.fullDelete) {
+      const lineRange = new Range(
+        new Position(deletion.line, 0),
+        new Position(deletion.line + 1, 0)
+      );
+      editBuilder.delete(lineRange);
+    } else {
+      for (const range of deletion.ranges) {
+        editBuilder.delete(range);
+      }
+    }
+  }
 }
