@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { findPairedTag, deleteTag, getSurroundingTag } from "./utils/tagUtils";
+import { findPairedTag, deleteTag, getSurroundingTag } from "../utils/tagUtils";
 
 export async function deleteSurroundingTagPair(editor: vscode.TextEditor): Promise<void> {
   const document = editor.document;

@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
-import { getSelectionType } from "./utils/selectionUtils";
-import { wrapContent } from "./utils/tagUtils";
-import { getSetting } from "./config";
+import { getSelectionType } from "../utils/selectionUtils";
+import { wrapContent } from "../utils/tagUtils";
+import { getSetting } from "../config";
 
 export async function surroundWithTag() {
   const blockTag = getSetting("defaultBlockTag");

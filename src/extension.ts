@@ -1,9 +1,9 @@
 import * as vscode from "vscode";
-import { jumpToMatchingPair } from "./jumpToMatchingPair";
-import { surroundWithTag } from "./surroundWithTag";
-import { insertSelfClosingTag } from "./insertSelfClosingTag";
-import { deleteSurroundingTagPair } from "./deleteSurroundingTagPair";
-import { deleteSelectionWithMatchingPairs } from "./deleteSelectionWithPairs";
+import { jumpToMatchingPair } from "./commands/jumpToMatchingPair";
+import { surroundWithTag } from "./commands/surroundWithTag";
+import { insertSelfClosingTag } from "./commands/insertSelfClosingTag";
+import { deleteSurroundingTagPair } from "./commands/deleteSurroundingTagPair";
+import { deleteSelectionWithMatchingPairs } from "./commands/deleteSelectionWithPairs";
 
 export function activate(context: vscode.ExtensionContext) {
   let surroundDisposable = vscode.commands.registerCommand(

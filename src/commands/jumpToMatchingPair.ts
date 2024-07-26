@@ -1,8 +1,8 @@
 import * as vscode from "vscode";
-import { getEnclosingTag, findPairedTag } from "./utils/tagUtils";
-import { getSelectionType, isBlock, updateSelection } from "./utils/selectionUtils";
+import { getEnclosingTag, findPairedTag } from "../utils/tagUtils";
+import { getSelectionType, isBlock, updateSelection } from "../utils/selectionUtils";
 import { Position, Range } from "vscode";
-import { asBracketLoc, findPairedBracketPos } from "./utils/bracketUtils";
+import { asBracketLoc, findPairedBracketPos } from "../utils/bracketUtils";
 
 export function jumpToMatchingPair(): void {
   const editor = vscode.window.activeTextEditor;

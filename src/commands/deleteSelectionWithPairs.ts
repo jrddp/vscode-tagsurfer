@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
-import { findPairedTag, getAllTagsInSelection } from "./utils/tagUtils";
-import { findPairedBracketPos, getAllBracketsInSelection } from "./utils/bracketUtils";
 import { Position, Range, Selection, TextEditorDecorationType } from "vscode";
-import { applyLineDeletions, generateLineDeletions } from "./utils/deletionUtils";
-import { getSelectionType } from "./utils/selectionUtils";
+
+import { findPairedTag, getAllTagsInSelection } from "../utils/tagUtils";
+import { findPairedBracketPos, getAllBracketsInSelection } from "../utils/bracketUtils";
+import { applyLineDeletions, generateLineDeletions } from "../utils/deletionUtils";
+import { getSelectionType } from "../utils/selectionUtils";
 
 export async function deleteSelectionWithMatchingPairs() {
   // output current selection start and end
