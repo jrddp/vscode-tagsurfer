@@ -2,9 +2,9 @@
 
 <h2 align="center">Streamline tag creation and navigation in HTML, JSX, and more.</h2>
 
-## Commands
+# Commands
 
-### Surround with Tag
+## Surround with Tag
 
 Surrounds the selected text with a new tag.
 
@@ -13,7 +13,7 @@ Surrounds the selected text with a new tag.
 
 The cursor will be placed at the start of the name of the new opening tag, so it can be easily edited. I recommend using this alongside the Auto Rename Tag extension.
 
-### Jump to Matching Pair
+## Jump to Matching Pair
 
 This combines the functionality of the Go to Matching Pair command from Emmet or Vim's '%' command.
 
@@ -29,11 +29,11 @@ _Additional notes:_
 
 Deletes the tag pair surrounding the cursor and cleans up any leftover whitespace.
 
-### Insert Self-Closing Tag
+## Insert Self-Closing Tag
 
 Inserts a self-closing tag at the cursor position.
 
-## Configuration
+# Configuration
 
 - `tagSurfer.defaultInlineTag`: Default tag for surrounding inline selections (string, default: "span")
 - `tagSurfer.defaultBlockTag`: Default tag for surrounding block selections (string, default: "div")
@@ -41,7 +41,7 @@ Inserts a self-closing tag at the cursor position.
 - `tagSurfer.autoRename`: If true, will automatically open rename prompt after creating tags. (boolean, default: false)
   - I prefer to leave this off and change the tag type manually so that I can have intellisense.
 
-## Don't other extensions already do these things?
+# Don't other extensions already do these things?
 
 There are plenty of extensions that provide tag surrounding functionality, such as Surround with Tag, htmltagwrap, or Wrap It. I made this extension to avoid the following:
 
