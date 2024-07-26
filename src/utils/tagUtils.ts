@@ -273,7 +273,11 @@ export function getSurroundingTag(document: TextDocument, position: Position): T
 }
 
 // will delete the tag and any remaining lines that would be empty after deletion
-export async function deleteTag(editor: TextEditor, tag: Tag, editBuilder?: TextEditorEdit): void {
+export async function deleteTag(
+  editor: TextEditor,
+  tag: Tag,
+  editBuilder?: TextEditorEdit
+): Promise<void> {
   const document = editor.document;
   if (!editBuilder) {
     await editor.edit(editBuilder => {
