@@ -1,4 +1,4 @@
-![TagSurfer Banner](https://raw.githubusercontent.com/jrddp/tagsurfer/main/images/Banner.png)
+![TagSurfer Banner](https://raw.githubusercontent.com/jrddp/vscode-tagsurfer/main/images/Banner.png)
 
 <h2 align="center">Streamline tag creation and navigation in HTML, JSX, and more.</h2>
 

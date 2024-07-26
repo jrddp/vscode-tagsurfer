@@ -2,8 +2,8 @@
   "name": "tagsurfer",
   "displayName": "TagSurfer",
   "description": "Streamline web development with intelligent tag surrounding and pair navigation for HTML, JSX, and TSX.",
-  "repository": "jrddp/tagsurfer",
-  "homepage": "https://github.com/jrddp/tagsurfer",
+  "repository": "jrddp/vscode-tagsurfer",
+  "homepage": "https://github.com/jrddp/vscode-tagsurfer",
   "icon": "images/Icon_Small.png",
   "version": "0.0.1",
   "engines": {
