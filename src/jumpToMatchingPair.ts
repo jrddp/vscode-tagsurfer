@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { getEnclosingTag, findPairedTag } from "./utils/tagUtils";
 import { getSelectionType, isBlock, updateSelection } from "./utils/selectionUtils";
 import { Position, Range } from "vscode";
-import { asBracketLoc, findMatchingBracket } from "./utils/bracketUtils";
+import { asBracketLoc, findPairedBracketPos } from "./utils/bracketUtils";
 
 export function jumpToMatchingPair(): void {
   const editor = vscode.window.activeTextEditor;
@@ -56,7 +56,7 @@ function attemptBracketJump(
     return false;
   }
 
-  const newPosition = findMatchingBracket(editor.document, bracketLoc);
+  const newPosition = findPairedBracketPos(editor.document, bracketLoc);
   if (newPosition) {
     updateSelection(editor, selection, newPosition);
     return true;

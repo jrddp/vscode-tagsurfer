@@ -2,7 +2,7 @@ import * as assert from "assert";
 import * as vscode from "vscode";
 import {
   asBracketLoc,
-  findMatchingBracket,
+  findPairedBracketPos,
   getAllBracketsInSelection,
 } from "../utils/bracketUtils";
 import { createTestDocument } from "./common";
@@ -11,84 +11,84 @@ suite("findMatchingBracket Test Suite", () => {
   test("Find matching parentheses - forward", async () => {
     const doc = await createTestDocument("(hello (world))");
     const bracketLoc = asBracketLoc("(", new vscode.Position(0, 0))!;
-    const result = findMatchingBracket(doc, bracketLoc);
+    const result = findPairedBracketPos(doc, bracketLoc);
     assert.deepStrictEqual(result, new vscode.Position(0, 14));
   });
 
   test("Find matching parentheses - backward", async () => {
     const doc = await createTestDocument("(hello (world))");
     const bracketLoc = asBracketLoc(")", new vscode.Position(0, 14))!;
-    const result = findMatchingBracket(doc, bracketLoc);
+    const result = findPairedBracketPos(doc, bracketLoc);
     assert.deepStrictEqual(result, new vscode.Position(0, 0));
   });
 
   test("Find matching square brackets", async () => {
     const doc = await createTestDocument("[test [nested] bracket]");
     const bracketLoc = asBracketLoc("[", new vscode.Position(0, 0))!;
-    const result = findMatchingBracket(doc, bracketLoc);
+    const result = findPairedBracketPos(doc, bracketLoc);
     assert.deepStrictEqual(result, new vscode.Position(0, 22));
   });
 
   test("Find matching curly braces", async () => {
     const doc = await createTestDocument("{test {nested} brace}");
     const bracketLoc = asBracketLoc("{", new vscode.Position(0, 0))!;
-    const result = findMatchingBracket(doc, bracketLoc);
+    const result = findPairedBracketPos(doc, bracketLoc);
     assert.deepStrictEqual(result, new vscode.Position(0, 20));
   });
 
   test("Find matching angle brackets", async () => {
     const doc = await createTestDocument("<test <nested> bracket>");
     const bracketLoc = asBracketLoc("<", new vscode.Position(0, 0))!;
-    const result = findMatchingBracket(doc, bracketLoc);
+    const result = findPairedBracketPos(doc, bracketLoc);
     assert.deepStrictEqual(result, new vscode.Position(0, 22));
   });
 
   test("Nested brackets of same type", async () => {
     const doc = await createTestDocument("((nested (deeply (nested))))");
     const bracketLoc = asBracketLoc("(", new vscode.Position(0, 0))!;
-    const result = findMatchingBracket(doc, bracketLoc);
+    const result = findPairedBracketPos(doc, bracketLoc);
     assert.deepStrictEqual(result, new vscode.Position(0, 27));
   });
 
   test("No matching bracket - unbalanced", async () => {
     const doc = await createTestDocument("(unbalanced");
     const bracketLoc = asBracketLoc("(", new vscode.Position(0, 0))!;
-    const result = findMatchingBracket(doc, bracketLoc);
+    const result = findPairedBracketPos(doc, bracketLoc);
     assert.strictEqual(result, null);
   });
 
   test("Multi-line bracket matching", async () => {
     const doc = await createTestDocument("(\n  multi\n  line\n)");
     const bracketLoc = asBracketLoc("(", new vscode.Position(0, 0))!;
-    const result = findMatchingBracket(doc, bracketLoc);
+    const result = findPairedBracketPos(doc, bracketLoc);
     assert.deepStrictEqual(result, new vscode.Position(3, 0));
   });
 
   test("Bracket at end of document", async () => {
     const doc = await createTestDocument("(end)");
     const bracketLoc = asBracketLoc(")", new vscode.Position(0, 4))!;
-    const result = findMatchingBracket(doc, bracketLoc);
+    const result = findPairedBracketPos(doc, bracketLoc);
     assert.deepStrictEqual(result, new vscode.Position(0, 0));
   });
 
   test("Bracket at start of document", async () => {
     const doc = await createTestDocument("(start)");
     const bracketLoc = asBracketLoc("(", new vscode.Position(0, 0))!;
-    const result = findMatchingBracket(doc, bracketLoc);
+    const result = findPairedBracketPos(doc, bracketLoc);
     assert.deepStrictEqual(result, new vscode.Position(0, 6));
   });
 
   test("Ignore brackets in string literals", async () => {
     const doc = await createTestDocument('("(" )');
     const bracketLoc = asBracketLoc("(", new vscode.Position(0, 0))!;
-    const result = findMatchingBracket(doc, bracketLoc);
+    const result = findPairedBracketPos(doc, bracketLoc);
     assert.deepStrictEqual(result, new vscode.Position(0, 5));
   });
 
   test("Complex nested structure", async () => {
     const doc = await createTestDocument('{ "array": [1, 2, {"nested": (3 + 4)}] }');
     const bracketLoc = asBracketLoc("{", new vscode.Position(0, 0))!;
-    const result = findMatchingBracket(doc, bracketLoc);
+    const result = findPairedBracketPos(doc, bracketLoc);
     assert.deepStrictEqual(result, new vscode.Position(0, 39));
   });
 });

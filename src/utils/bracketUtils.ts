@@ -42,7 +42,7 @@ export function asBracketLoc(character: string, position: Position): BracketLoc 
   return null;
 }
 
-export function findMatchingBracket(
+export function findPairedBracketPos(
   document: TextDocument,
   bracketLoc: BracketLoc
 ): Position | null {
