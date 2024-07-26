@@ -4,7 +4,7 @@
 
 ## Commands
 
-### Surround with Tag
+### Surround with Tag `tagSurfer.surroundWithTag`
 
 Surrounds the selected text with a new tag.
 
@@ -13,7 +13,7 @@ Surrounds the selected text with a new tag.
 
 The cursor will be placed at the start of the name of the new opening tag, so it can be easily edited. I recommend using this alongside the Auto Rename Tag extension.
 
-### Jump to Matching Pair
+### Jump to Matching Pair `tagSurfer.jumpToMatchingPair`
 
 This combines the functionality of the Go to Matching Pair command from Emmet or Vim's '%' command.
 
@@ -25,7 +25,11 @@ _Additional notes:_
 - If there is no bracket or tag under the cursor, it will use the bracket at the end of the line. This allows, for example, jumping to the end of a function while hovering over its name.
 - If you have a full line selected, it will also jump as if you were hovering over the end of the line. This allows you to very easily select entire functions.
 
-### Insert Self-Closing Tag
+## Delete Surrounding Tag Pair `tagSurfer.deleteSurroundingTagPair`
+
+Deletes the tag pair surrounding the cursor and cleans up any leftover whitespace.
+
+### Insert Self-Closing Tag `tagSurfer.insertSelfClosingTag`
 
 Inserts a self-closing tag at the cursor position.
 

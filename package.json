@@ -27,6 +27,10 @@
       {
         "command": "tagSurfer.insertSelfClosingTag",
         "title": "TagSurfer: Insert Self-Closing Tag"
+      },
+      {
+        "command": "tagSurfer.deleteSurroundingTagPair",
+        "title": "TagSurfer: Delete Surrounding Tag Pair"
       }
     ],
     "configuration": {

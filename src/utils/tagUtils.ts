@@ -1,4 +1,4 @@
-import { TextEditor, Range, TextDocument, Position } from "vscode";
+import { TextEditor, Range, TextDocument, Position, TextEditorEdit } from "vscode";
 
 export type TagType = "opening" | "closing" | "selfClosing";
 export type Tag = {
@@ -270,4 +270,65 @@ export function getSurroundingTag(document: TextDocument, position: Position): T
   }
 
   return null;
+}
+
+// will delete the tag and any remaining lines that would be empty after deletion
+export async function deleteTag(editor: TextEditor, tag: Tag, editBuilder?: TextEditorEdit): void {
+  const document = editor.document;
+  if (!editBuilder) {
+    await editor.edit(editBuilder => {
+      deleteTag(editor, tag, editBuilder);
+    });
+    return;
+  }
+
+  // delete start line if there is only whitespace before
+  const deleteStartLine =
+    document.lineAt(tag.tagRange.start.line).text.slice(0, tag.tagRange.start.character).trim() ===
+    "";
+  // delete end line if there is only whitespace after
+  const deleteEndLine =
+    document.lineAt(tag.tagRange.end.line).text.slice(tag.tagRange.end.character).trim() === "";
+
+  const startLine = tag.tagRange.start.line;
+  const endLine = tag.tagRange.end.line;
+  if (startLine === endLine) {
+    if (deleteStartLine && deleteEndLine) {
+      editBuilder.delete(new Range(startLine, 0, startLine + 1, 0));
+    } else {
+      editBuilder.delete(tag.tagRange);
+    }
+  } else {
+    // tag spans multiple lines
+    if (deleteStartLine) {
+      editBuilder.delete(new Range(startLine, 0, startLine + 1, 0));
+    } else {
+      // there is other content on the line. only delete the start of the tag onwards
+      editBuilder.delete(
+        new Range(
+          tag.tagRange.start.line,
+          tag.tagRange.start.character,
+          tag.tagRange.start.line,
+          document.lineAt(tag.tagRange.start.line).text.length
+        )
+      );
+    }
+    if (deleteEndLine) {
+      editBuilder.delete(new Range(endLine, 0, endLine + 1, 0));
+    } else {
+      // there is other content on the line. only delete up to end of the tag and maintain indentation
+      const lineText = document.lineAt(tag.tagRange.end.line).text;
+      // the regex simply matches all starting whitespace until the first non-whitespace character
+      const whiteSpace = document
+        .lineAt(tag.tagRange.end.line)
+        .text.slice(0, lineText.match(/^\s*/)?.[0].length ?? 0);
+      editBuilder.replace(
+        new Range(tag.tagRange.end.line, 0, tag.tagRange.end.line, tag.tagRange.end.character),
+        whiteSpace
+      );
+    }
+    for (let i = startLine + 1; i < endLine; i++) {
+      editBuilder.delete(new Range(i, 0, i + 1, 0));
+    }
+  }
 }
