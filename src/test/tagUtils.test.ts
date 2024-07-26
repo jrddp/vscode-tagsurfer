@@ -9,6 +9,7 @@ import {
   Tag,
   findPairedTag,
   getSurroundingTag,
+  getAllTagsInSelection,
 } from "../utils/tagUtils";
 import { createTestDocument } from "./common";
 
@@ -444,5 +445,161 @@ suite("getSurroundingTag Test Suite", () => {
     const doc = await createTestDocument("Just some text");
     const result = getSurroundingTag(doc, new vscode.Position(0, 10));
     assert.strictEqual(result, null);
+  });
+});
+
+suite("getAllTagsInSelection Test Suite", () => {
+  test("Single tag - Opening only", async () => {
+    const doc = await createTestDocument("<div>content</div>");
+    const selection = new vscode.Range(0, 0, 0, 16);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 1);
+    assert.deepStrictEqual(result[0], {
+      tagName: "div",
+      tagType: "opening",
+      tagRange: new vscode.Range(0, 0, 0, 5),
+    });
+  });
+
+  test("Single tag - Opening only, reversed selection", async () => {
+    const doc = await createTestDocument("<div>content</div>");
+    const selection = new vscode.Selection(0, 16, 0, 0);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 1);
+    assert.deepStrictEqual(result[0], {
+      tagName: "div",
+      tagType: "opening",
+      tagRange: new vscode.Range(0, 0, 0, 5),
+    });
+  });
+
+  test("Single tag - Opening and closing", async () => {
+    const doc = await createTestDocument("<div>content</div>");
+    const selection = new vscode.Range(0, 0, 0, 18);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 2);
+    assert.deepStrictEqual(result[0], {
+      tagName: "div",
+      tagType: "opening",
+      tagRange: new vscode.Range(0, 0, 0, 5),
+    });
+    assert.deepStrictEqual(result[1], {
+      tagName: "div",
+      tagType: "closing",
+      tagRange: new vscode.Range(0, 12, 0, 18),
+    });
+  });
+
+  test("Multiple tags in selection", async () => {
+    const doc = await createTestDocument("<div><span>content</span></div>");
+    const selection = new vscode.Range(0, 0, 0, 31);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 4);
+    assert.deepStrictEqual(result[0], {
+      tagName: "div",
+      tagType: "opening",
+      tagRange: new vscode.Range(0, 0, 0, 5),
+    });
+    assert.deepStrictEqual(result[1], {
+      tagName: "span",
+      tagType: "opening",
+      tagRange: new vscode.Range(0, 5, 0, 11),
+    });
+    assert.deepStrictEqual(result[2], {
+      tagName: "span",
+      tagType: "closing",
+      tagRange: new vscode.Range(0, 18, 0, 25),
+    });
+    assert.deepStrictEqual(result[3], {
+      tagName: "div",
+      tagType: "closing",
+      tagRange: new vscode.Range(0, 25, 0, 31),
+    });
+  });
+
+  test("Partial tag selection", async () => {
+    const doc = await createTestDocument("<div>content</div>");
+    const selection = new vscode.Range(0, 2, 0, 14);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 0);
+  });
+
+  test("Self-closing tag", async () => {
+    const doc = await createTestDocument('<div><img src="test.jpg" /></div>');
+    const selection = new vscode.Range(0, 0, 0, 32);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 2);
+    assert.deepStrictEqual(result[1], {
+      tagName: "img",
+      tagType: "selfClosing",
+      tagRange: new vscode.Range(0, 5, 0, 27),
+    });
+  });
+
+  test("Tag with attributes", async () => {
+    const doc = await createTestDocument('<div class="test" id="main">content</div>');
+    const selection = new vscode.Range(0, 0, 0, 41);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 2);
+    assert.deepStrictEqual(result[0], {
+      tagName: "div",
+      tagType: "opening",
+      tagRange: new vscode.Range(0, 0, 0, 28),
+    });
+  });
+
+  test("Multi-line selection", async () => {
+    const doc = await createTestDocument("<div>\n  <span>content</span>\n</div>");
+    const selection = new vscode.Range(0, 0, 2, 6);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 4);
+    assert.deepStrictEqual(result[1], {
+      tagName: "span",
+      tagType: "opening",
+      tagRange: new vscode.Range(1, 2, 1, 8),
+    });
+  });
+
+  test("No tags in selection", async () => {
+    const doc = await createTestDocument("Just some text without tags");
+    const selection = new vscode.Range(0, 0, 0, 28);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 0);
+  });
+
+  test("Nested tags of same type", async () => {
+    const doc = await createTestDocument("<div><div>nested</div></div>");
+    const selection = new vscode.Range(0, 0, 0, 28);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 4);
+    assert.deepStrictEqual(result[1], {
+      tagName: "div",
+      tagType: "opening",
+      tagRange: new vscode.Range(0, 5, 0, 10),
+    });
+  });
+
+  test("Comment within selection", async () => {
+    const doc = await createTestDocument("<div><!-- <span> -->content</div>");
+    const selection = new vscode.Range(0, 0, 0, 32);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 2);
+    assert.deepStrictEqual(result[0], {
+      tagName: "div",
+      tagType: "opening",
+      tagRange: new vscode.Range(0, 0, 0, 5),
+    });
+  });
+
+  test("Tag spanning multiple lines", async () => {
+    const doc = await createTestDocument('<div\n  class="test"\n  id="main">\ncontent\n</div>');
+    const selection = new vscode.Range(0, 0, 4, 6);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 2);
+    assert.deepStrictEqual(result[0], {
+      tagName: "div",
+      tagType: "opening",
+      tagRange: new vscode.Range(0, 0, 2, 12),
+    });
   });
 });

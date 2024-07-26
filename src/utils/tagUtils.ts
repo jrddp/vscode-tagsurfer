@@ -1,4 +1,4 @@
-import { TextEditor, Range, TextDocument, Position, TextEditorEdit } from "vscode";
+import { TextEditor, Range, TextDocument, Position, TextEditorEdit, Selection } from "vscode";
 
 export type TagType = "opening" | "closing" | "selfClosing";
 export type Tag = {
@@ -335,4 +335,39 @@ export async function deleteTag(
       editBuilder.delete(new Range(i, 0, i + 1, 0));
     }
   }
+}
+
+export function getAllTagsInSelection(document: TextDocument, selection: Range | Selection): Tag[] {
+  let selStart = selection.start;
+  let selEnd = selection.end;
+  if (selection instanceof Selection && selection.isReversed) {
+    const temp = selStart;
+    selStart = selEnd;
+    selEnd = temp;
+  }
+
+  const text = document.getText(selection);
+  const tags: Tag[] = [];
+  let match;
+  const tagRegex = /<\/?(\w+)(?:\s+[^>]*)?>/g;
+
+  while ((match = tagRegex.exec(text)) !== null) {
+    const startPos = document.positionAt(document.offsetAt(selection.start) + match.index);
+    const endPos = document.positionAt(
+      document.offsetAt(selection.start) + match.index + match[0].length
+    );
+    const tagType: TagType = match[0].startsWith("</")
+      ? "closing"
+      : match[0].endsWith("/>")
+      ? "selfClosing"
+      : "opening";
+
+    tags.push({
+      tagName: match[1],
+      tagType: tagType,
+      tagRange: new Range(startPos, endPos),
+    });
+  }
+
+  return tags;
 }
