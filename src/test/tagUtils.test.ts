@@ -8,6 +8,7 @@ import {
   getEnclosingTag,
   Tag,
   findPairedTag,
+  getSurroundingTag,
 } from "../utils/tagUtils";
 import { createTestDocument } from "./common";
 
@@ -344,6 +345,104 @@ suite("findPairedTag Test Suite", () => {
       tagRange: new vscode.Range(0, 18, 0, 24),
     };
     const result = findPairedTag(doc, tag);
+    assert.strictEqual(result, null);
+  });
+});
+
+suite("getSurroundingTag Test Suite", () => {
+  test("Cursor inside tag", async () => {
+    const doc = await createTestDocument("<div>content</div>");
+    const result = getSurroundingTag(doc, new vscode.Position(0, 3));
+    assert.strictEqual(result?.tagName, "div");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 0, 0, 5));
+  });
+
+  test("Cursor in content", async () => {
+    const doc = await createTestDocument("<div>content</div>");
+    const result = getSurroundingTag(doc, new vscode.Position(0, 7));
+    assert.strictEqual(result?.tagName, "div");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 0, 0, 5));
+  });
+
+  test("Nested tags", async () => {
+    const doc = await createTestDocument("<div><span>content</span></div>");
+    const result = getSurroundingTag(doc, new vscode.Position(0, 12));
+    assert.strictEqual(result?.tagName, "span");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 5, 0, 11));
+  });
+
+  test("Cursor at start of document", async () => {
+    const doc = await createTestDocument("<div>content</div>");
+    const result = getSurroundingTag(doc, new vscode.Position(0, 0));
+    assert.strictEqual(result?.tagName, "div");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 0, 0, 5));
+  });
+
+  test("Cursor at end of document", async () => {
+    const doc = await createTestDocument("<div>content</div>");
+    const result = getSurroundingTag(doc, new vscode.Position(0, 16));
+    assert.strictEqual(result?.tagName, "div");
+    assert.strictEqual(result?.tagType, "closing");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 12, 0, 18));
+  });
+
+  test("Avoid self-closing tag", async () => {
+    const doc = await createTestDocument('<div><img src="test.jpg" />content</div>');
+    const result = getSurroundingTag(doc, new vscode.Position(0, 27));
+    assert.strictEqual(result?.tagName, "div");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 0, 0, 5));
+  });
+
+  test("Multiple nested tags", async () => {
+    const doc = await createTestDocument("<div><span><p>content</p></span></div>");
+    const result = getSurroundingTag(doc, new vscode.Position(0, 16));
+    assert.strictEqual(result?.tagName, "p");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 11, 0, 14));
+  });
+
+  test("Tag with attributes", async () => {
+    const doc = await createTestDocument('<div class="test" id="main">content</div>');
+    const result = getSurroundingTag(doc, new vscode.Position(0, 29));
+    assert.strictEqual(result?.tagName, "div");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 0, 0, 28));
+  });
+
+  test("Cursor between tags", async () => {
+    const doc = await createTestDocument("<div></div><span></span>");
+    const result = getSurroundingTag(doc, new vscode.Position(0, 12));
+    assert.strictEqual(result?.tagName, "span");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 11, 0, 17));
+  });
+
+  test("Multi-line tag", async () => {
+    const doc = await createTestDocument(
+      '<div\n    class="test"\n    id="main">\n    content\n</div>'
+    );
+    const result = getSurroundingTag(doc, new vscode.Position(3, 7));
+    assert.strictEqual(result?.tagName, "div");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 0, 2, 14));
+  });
+
+  test("Comment inside tag", async () => {
+    const doc = await createTestDocument("<div><!-- <span> -->content</div>");
+    const result = getSurroundingTag(doc, new vscode.Position(0, 22));
+    assert.strictEqual(result?.tagName, "div");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 0, 0, 5));
+  });
+
+  test("No surrounding tag", async () => {
+    const doc = await createTestDocument("Just some text");
+    const result = getSurroundingTag(doc, new vscode.Position(0, 10));
     assert.strictEqual(result, null);
   });
 });

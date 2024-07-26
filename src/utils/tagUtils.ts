@@ -216,3 +216,58 @@ export function findPairedTag(document: TextDocument, tag: Tag): Tag | null {
 
   return null; // No matching tag found
 }
+
+export function getSurroundingTag(document: TextDocument, position: Position): Tag | null {
+  // First, check if there's a directly enclosing tag
+  const enclosingTag = getEnclosingTag(document, position);
+  if (enclosingTag) {
+    return enclosingTag;
+  }
+
+  // If no directly enclosing tag, search backwards for the start of a surrounding tag
+  const maxLines = 1000; // Maximum number of lines to search backwards
+  let startLine = Math.max(0, position.line - maxLines);
+  let nestingLevel = 1; // we assume we are already nested inside a tag
+  let inHtmlComment = false; // track comments (<!-- -->)
+
+  for (let i = position.line; i >= startLine; i--) {
+    const line = document.lineAt(i).text;
+    const startChar = i === position.line ? position.character : line.length - 1;
+
+    for (let j = startChar; j >= 0; j--) {
+      if (line[j] === ">") {
+        if (inHtmlComment) {
+          continue;
+        } else if (j > 1 && line[j - 1] === "-" && line[j - 2] === "-") {
+          inHtmlComment = true;
+          continue;
+        } else if (j > 0 && line[j - 1] === "/") {
+          nestingLevel++; // ignore next '<'
+          continue; // Ignore self-closing tags
+        }
+      } else if (line[j] === "<") {
+        if (inHtmlComment) {
+          if (
+            j + 3 < line.length &&
+            line[j + 1] === "!" &&
+            line[j + 2] === "-" &&
+            line[j + 3] === "-"
+          ) {
+            inHtmlComment = false;
+          }
+          continue;
+        } else if (j + 1 < line.length && line[j + 1] === "/") {
+          nestingLevel++; // Found a closing tag
+        } else {
+          nestingLevel--; // Found an opening tag
+          if (nestingLevel === 0) {
+            const tagStart = new Position(i, j);
+            return getEnclosingTag(document, tagStart);
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
