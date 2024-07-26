@@ -31,6 +31,10 @@
       {
         "command": "tagSurfer.deleteSurroundingTagPair",
         "title": "TagSurfer: Delete Surrounding Tag Pair"
+      },
+      {
+        "command": "tagSurfer.deleteSelectionWithPairs",
+        "title": "TagSurfer: Delete Selection with Matching Pairs"
       }
     ],
     "configuration": {
