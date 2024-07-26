@@ -1,17 +1,55 @@
-import { Position, TextDocument } from "vscode";
+import { Position, Range, Selection, TextDocument } from "vscode";
 
-export const openBrackets = "([{<";
-export const closeBrackets = ")]}>";
-export const allBrackets = openBrackets + closeBrackets;
+export const openBrackets = ["(", "[", "{", "<"] as const;
+export const closeBrackets = [")", "]", "}", ">"] as const;
+
+type OpenBracket = (typeof openBrackets)[number];
+type CloseBracket = (typeof closeBrackets)[number];
+export type Bracket = OpenBracket | CloseBracket;
+
+export type BracketLoc =
+  | { bracket: OpenBracket; position: Position; type: "opening" }
+  | { bracket: CloseBracket; position: Position; type: "closing" };
+
+function isOpenBracket(character: string): character is OpenBracket {
+  return (openBrackets as readonly string[]).includes(character);
+}
+
+function isCloseBracket(character: string): character is CloseBracket {
+  return (closeBrackets as readonly string[]).includes(character);
+}
+
+function getMatch(bracket: Bracket): Bracket {
+  return isOpenBracket(bracket)
+    ? closeBrackets[openBrackets.indexOf(bracket)]
+    : openBrackets[closeBrackets.indexOf(bracket)];
+}
+
+export function asBracketLoc(character: string, position: Position): BracketLoc | null {
+  if (isOpenBracket(character)) {
+    return {
+      bracket: character,
+      position,
+      type: "opening",
+    };
+  } else if (isCloseBracket(character)) {
+    return {
+      bracket: character,
+      position,
+      type: "closing",
+    };
+  }
+  return null;
+}
 
 export function findMatchingBracket(
   document: TextDocument,
-  startPosition: Position,
-  bracket: string
+  bracketLoc: BracketLoc
 ): Position | null {
-  const isOpenBracket = openBrackets.includes(bracket);
-  const matchIndex = isOpenBracket ? openBrackets.indexOf(bracket) : closeBrackets.indexOf(bracket);
-  const matchBracket = isOpenBracket ? closeBrackets[matchIndex] : openBrackets[matchIndex];
+  const isOpenBracket = bracketLoc.type === "opening";
+  const bracket = bracketLoc.bracket;
+  const matchBracket = getMatch(bracket);
+  const startPosition = bracketLoc.position;
 
   let nestingLevel = 0;
   let quote = null;
@@ -67,4 +105,25 @@ export function findMatchingBracket(
   }
 
   return null; // No matching bracket found
+}
+
+export function getAllBracketsInSelection(
+  document: TextDocument,
+  selection: Range | Selection
+): BracketLoc[] {
+  let selStart = selection.start;
+  let selEnd = selection.end;
+
+  const text = document.getText(selection);
+  const brackets: BracketLoc[] = [];
+
+  for (let i = 0; i < text.length; i++) {
+    const pos = document.positionAt(document.offsetAt(selection.start) + i);
+    const bracketLoc = asBracketLoc(text[i], pos);
+    if (bracketLoc) {
+      brackets.push(bracketLoc);
+    }
+  }
+
+  return brackets;
 }

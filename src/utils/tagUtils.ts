@@ -340,11 +340,6 @@ export async function deleteTag(
 export function getAllTagsInSelection(document: TextDocument, selection: Range | Selection): Tag[] {
   let selStart = selection.start;
   let selEnd = selection.end;
-  if (selection instanceof Selection && selection.isReversed) {
-    const temp = selStart;
-    selStart = selEnd;
-    selEnd = temp;
-  }
 
   const text = document.getText(selection);
   const tags: Tag[] = [];

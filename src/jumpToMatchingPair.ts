@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { getEnclosingTag, findPairedTag } from "./utils/tagUtils";
 import { getSelectionType, isBlock, updateSelection } from "./utils/selectionUtils";
 import { Position, Range } from "vscode";
-import { allBrackets, findMatchingBracket } from "./utils/bracketUtils";
+import { asBracketLoc, findMatchingBracket } from "./utils/bracketUtils";
 
 export function jumpToMatchingPair(): void {
   const editor = vscode.window.activeTextEditor;
@@ -51,16 +51,19 @@ function attemptBracketJump(
   cursorPos: Position,
   character: string
 ): boolean {
-  if (allBrackets.includes(character)) {
-    const newPosition = findMatchingBracket(editor.document, cursorPos, character);
-    if (newPosition) {
-      updateSelection(editor, selection, newPosition);
-      return true;
-    } else {
-      vscode.window.showInformationMessage(`Unable to find matching pair for '${character}'.`);
-    }
+  const bracketLoc = asBracketLoc(character, cursorPos);
+  if (!bracketLoc) {
+    return false;
   }
-  return false;
+
+  const newPosition = findMatchingBracket(editor.document, bracketLoc);
+  if (newPosition) {
+    updateSelection(editor, selection, newPosition);
+    return true;
+  } else {
+    vscode.window.showInformationMessage(`Unable to find matching pair for '${character}'.`);
+    return false;
+  }
 }
 
 function attempTagJump(
