@@ -10,9 +10,9 @@ suite("Deletion Functions Test Suite", () => {
       const ranges = [new vscode.Range(0, 5, 0, 7)]; // Delete "is"
       const result = generateLineDeletions(document, ranges);
 
-      assert.deepStrictEqual(result, {
-        0: { ranges: [new vscode.Range(0, 5, 0, 7)], fullDelete: false },
-      });
+      assert.deepStrictEqual(result, [
+        { line: 0, ranges: [new vscode.Range(0, 5, 0, 7)], fullDelete: false },
+      ]);
     });
 
     test("Multi-line deletion", async () => {
@@ -20,11 +20,11 @@ suite("Deletion Functions Test Suite", () => {
       const ranges = [new vscode.Range(0, 2, 2, 3)]; // Delete from "ne 1" to "ne "
       const result = generateLineDeletions(document, ranges);
 
-      assert.deepStrictEqual(result, {
-        0: { ranges: [new vscode.Range(0, 2, 0, 6)], fullDelete: false },
-        1: { ranges: [], fullDelete: true },
-        2: { ranges: [new vscode.Range(2, 0, 2, 3)], fullDelete: false },
-      });
+      assert.deepStrictEqual(result, [
+        { line: 0, ranges: [new vscode.Range(0, 2, 0, 6)], fullDelete: false },
+        { line: 1, ranges: [], fullDelete: true },
+        { line: 2, ranges: [new vscode.Range(2, 0, 2, 3)], fullDelete: false },
+      ]);
     });
 
     test("Full line deletion due to whitespace", async () => {
@@ -32,9 +32,9 @@ suite("Deletion Functions Test Suite", () => {
       const ranges = [new vscode.Range(0, 2, 0, 16)]; // Delete "This is a test"
       const result = generateLineDeletions(document, ranges);
 
-      assert.deepStrictEqual(result, {
-        0: { ranges: [new vscode.Range(0, 2, 0, 16)], fullDelete: true },
-      });
+      assert.deepStrictEqual(result, [
+        { line: 0, ranges: [new vscode.Range(0, 2, 0, 16)], fullDelete: true },
+      ]);
     });
 
     test("Multiple ranges on single line", async () => {
@@ -45,12 +45,13 @@ suite("Deletion Functions Test Suite", () => {
       ];
       const result = generateLineDeletions(document, ranges);
 
-      assert.deepStrictEqual(result, {
-        0: {
+      assert.deepStrictEqual(result, [
+        {
+          line: 0,
           ranges: [new vscode.Range(0, 0, 0, 4), new vscode.Range(0, 8, 0, 9)],
           fullDelete: false,
         },
-      });
+      ]);
     });
 
     test("Empty range", async () => {
@@ -58,7 +59,7 @@ suite("Deletion Functions Test Suite", () => {
       const ranges = [new vscode.Range(0, 5, 0, 5)]; // Empty range
       const result = generateLineDeletions(document, ranges);
 
-      assert.deepStrictEqual(result, {});
+      assert.deepStrictEqual(result, []);
     });
   });
 
