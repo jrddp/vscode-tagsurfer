@@ -6,6 +6,8 @@
 
 ## Surround with Tag
 
+![Surround with Tag Gif](https://raw.githubusercontent.com/jrddp/vscode-tagsurfer/main/images/surroundWithTag.gif)
+
 Surrounds the selected text with a new tag.
 
 - When surrounding an inline selection, the tag defaults to a `<span>` and surrounds selected text directly.
@@ -14,6 +16,8 @@ Surrounds the selected text with a new tag.
 The cursor will be placed at the start of the name of the new opening tag, so it can be easily edited. I recommend using this alongside the Auto Rename Tag extension.
 
 ## Jump to Matching Pair
+
+![Jump to Matching Pair Gif](https://raw.githubusercontent.com/jrddp/vscode-tagsurfer/main/images/jumpToMatchingPair.gif)
 
 This combines the functionality of the Go to Matching Pair command from Emmet or Vim's '%' command.
 
@@ -26,21 +30,29 @@ _Additional notes:_
 - If you have a full line selected, it will also jump as if you were hovering over the end of the line. This allows you to very easily select entire functions.
 
 ## Focus className
+
+![Focus className Gif](https://raw.githubusercontent.com/jrddp/vscode-tagsurfer/main/images/focusClassName.gif)
+
 Focuses the cursor at the end of the list of class names for the surrounding tag.
 
 - If there is no className property, it will create one automatically.
 - Supports matching for `class=""`, `className=`, or `className={cn("")}`
 
-
 ## Delete Selection with Matching Pairs
+
+![Delete Selection with Matching Pairs Gif](https://raw.githubusercontent.com/jrddp/vscode-tagsurfer/main/images/deleteSelectionWithMatchingPairs.gif)
 
 Deletes current selection along with any matching tags or brackets. Will also clean up any empty lines from the pair delections.
 
 ## Delete Surrounding Tag Pair
 
+![Delete Surrounding Tag Pair Gif](https://raw.githubusercontent.com/jrddp/vscode-tagsurfer/main/images/deleteSurroundingTagPair.gif)
+
 Deletes the tag pair surrounding the cursor and cleans up any leftover empty lines.
 
 ## Insert Self-Closing Tag
+
+![Insert Self-Closing Tag Gif](https://raw.githubusercontent.com/jrddp/vscode-tagsurfer/main/images/insertSelfClosingTag.gif)
 
 Inserts a self-closing tag at the cursor position.
 
