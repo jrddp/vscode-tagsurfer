@@ -366,3 +366,54 @@ export function getAllTagsInSelection(document: TextDocument, selection: Range |
 
   return tags;
 }
+
+type PositionType = "endOfName" | "endOfClassList";
+
+type ClassNamePosition = {
+  position: Position;
+  positionType: PositionType;
+};
+
+export function findClassNamePos(document: TextDocument, tag: Tag): ClassNamePosition {
+  const tagText = document.getText(tag.tagRange);
+
+  // match class, className, or className={cn( up until (including) the closing quote
+  const classNameRegex = /class(?:Name)?\s*=\s*(?:{cn\()?["'][^"']*["']/;
+  const match = tagText.match(classNameRegex);
+
+  if (match) {
+    // todo handle multiline
+    const matchStartOffset = match.index!;
+    const matchEndOffset = matchStartOffset + match[0].length - 1; // -1 to position inside the closing quote
+    let classNameEndPos = document.positionAt(
+      document.offsetAt(tag.tagRange.start) + matchEndOffset
+    );
+
+    const splitLines = tagText.split("\n");
+    // convert char offset to line-char offset
+    if (splitLines.length > 1) {
+      let line = 0;
+      let i = -tag.tagRange.start.character;
+      while (i + splitLines[line].length + 1 < matchEndOffset) {
+        i += splitLines[line].length;
+        i += 1; // +1 to include the newline
+        line++;
+      }
+      classNameEndPos = new Position(
+        tag.tagRange.start.line + line,
+        matchEndOffset - i - tag.tagRange.start.character
+      );
+    }
+    return {
+      position: classNameEndPos,
+      positionType: "endOfClassList",
+    };
+  } else {
+    const tagNameEndPos = tag.tagRange.start.translate(0, tag.tagName.length + 1);
+
+    return {
+      position: tagNameEndPos,
+      positionType: "endOfName",
+    };
+  }
+}

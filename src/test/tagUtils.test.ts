@@ -10,6 +10,7 @@ import {
   findPairedTag,
   getSurroundingTag,
   getAllTagsInSelection,
+  findClassNamePos,
 } from "../utils/tagUtils";
 import { createTestDocument } from "./common";
 
@@ -601,5 +602,175 @@ suite("getAllTagsInSelection Test Suite", () => {
       tagType: "opening",
       tagRange: new vscode.Range(0, 0, 2, 12),
     });
+  });
+});
+
+suite("findClassNamePos Tests", () => {
+  test("Find className in simple tag", async () => {
+    const document = await createTestDocument('<div className="test-class"></div>');
+    const tag = {
+      tagName: "div",
+      tagType: "opening" as const,
+      tagRange: new vscode.Range(0, 0, 0, 28),
+    };
+
+    const result = findClassNamePos(document, tag);
+
+    assert.strictEqual(result.positionType, "endOfClassList");
+    assert.deepStrictEqual(result.position, new vscode.Position(0, 26));
+  });
+
+  test("Find class in simple tag", async () => {
+    const document = await createTestDocument('<div class="test-class"></div>');
+    const tag = {
+      tagName: "div",
+      tagType: "opening" as const,
+      tagRange: new vscode.Range(0, 0, 0, 24),
+    };
+
+    const result = findClassNamePos(document, tag);
+
+    assert.strictEqual(result.positionType, "endOfClassList");
+    assert.deepStrictEqual(result.position, new vscode.Position(0, 22));
+  });
+
+  test("Find className with cn function", async () => {
+    const document = await createTestDocument('<div className={cn("test-class")}></div>');
+    const tag = {
+      tagName: "div",
+      tagType: "opening" as const,
+      tagRange: new vscode.Range(0, 0, 0, 34),
+    };
+
+    const result = findClassNamePos(document, tag);
+
+    assert.strictEqual(result.positionType, "endOfClassList");
+    assert.deepStrictEqual(result.position, new vscode.Position(0, 30));
+  });
+
+  test("No className found", async () => {
+    const document = await createTestDocument('<div id="test-id"></div>');
+    const tag = {
+      tagName: "div",
+      tagType: "opening" as const,
+      tagRange: new vscode.Range(0, 0, 0, 18),
+    };
+
+    const result = findClassNamePos(document, tag);
+
+    assert.strictEqual(result.positionType, "endOfName");
+    assert.deepStrictEqual(result.position, new vscode.Position(0, 4));
+  });
+
+  test("className with single quotes", async () => {
+    const document = await createTestDocument("<div className='test-class'></div>");
+    const tag = {
+      tagName: "div",
+      tagType: "opening" as const,
+      tagRange: new vscode.Range(0, 0, 0, 27),
+    };
+
+    const result = findClassNamePos(document, tag);
+
+    assert.strictEqual(result.positionType, "endOfClassList");
+    assert.deepStrictEqual(result.position, new vscode.Position(0, 26));
+  });
+
+  test("className in multi-line tag: 2nd line", async () => {
+    const document = await createTestDocument(`<div\n    className="test-class"\n    id="test-id"\n></div>`);
+    const tag = {
+      tagName: "div",
+      tagType: "opening" as const,
+      tagRange: new vscode.Range(0, 0, 3, 1),
+    };
+
+    const result = findClassNamePos(document, tag);
+
+    assert.strictEqual(result.positionType, "endOfClassList");
+    assert.deepStrictEqual(result.position, new vscode.Position(1, 25));
+  });
+
+  test("className in multi-line tag: 3rd line", async () => {
+    const document = await createTestDocument(`<div\n    id="test-id"\n    className="test-class"\n></div>`);
+    const tag = {
+      tagName: "div",
+      tagType: "opening" as const,
+      tagRange: new vscode.Range(0, 0, 3, 1),
+    };
+
+    const result = findClassNamePos(document, tag);
+
+    assert.strictEqual(result.positionType, "endOfClassList");
+    assert.deepStrictEqual(result.position, new vscode.Position(2, 25));
+  });
+
+  test("className in multi-line tag with offset", async () => {
+    const document = await createTestDocument(`  <div\n    className="test-class"\n    id="test-id"\n></div>`);
+    const tag = {
+      tagName: "div",
+      tagType: "opening" as const,
+      tagRange: new vscode.Range(0, 2, 3, 1),
+    };
+
+    const result = findClassNamePos(document, tag);
+
+    assert.strictEqual(result.positionType, "endOfClassList");
+    assert.deepStrictEqual(result.position, new vscode.Position(1, 25));
+  });
+
+  test("className in multi-line tag with offset: 3rd line", async () => {
+    const document = await createTestDocument(`  <div\n    id="test-id"\n    className="test-class"\n></div>`);
+    const tag = {
+      tagName: "div",
+      tagType: "opening" as const,
+      tagRange: new vscode.Range(0, 2, 3, 1),
+    };
+
+    const result = findClassNamePos(document, tag);
+
+    assert.strictEqual(result.positionType, "endOfClassList");
+    assert.deepStrictEqual(result.position, new vscode.Position(2, 25));
+  });
+
+  test("className with multiple classes", async () => {
+    const document = await createTestDocument('<div className="class1 class2 class3"></div>');
+    const tag = {
+      tagName: "div",
+      tagType: "opening" as const,
+      tagRange: new vscode.Range(0, 0, 0, 38),
+    };
+
+    const result = findClassNamePos(document, tag);
+
+    assert.strictEqual(result.positionType, "endOfClassList");
+    assert.deepStrictEqual(result.position, new vscode.Position(0, 36));
+  });
+
+  test("Self-closing tag with className", async () => {
+    const document = await createTestDocument('<input className="test-class" />');
+    const tag = {
+      tagName: "input",
+      tagType: "selfClosing" as const,
+      tagRange: new vscode.Range(0, 0, 0, 32),
+    };
+
+    const result = findClassNamePos(document, tag);
+
+    assert.strictEqual(result.positionType, "endOfClassList");
+    assert.deepStrictEqual(result.position, new vscode.Position(0, 28));
+  });
+
+  test("className after other attributes", async () => {
+    const document = await createTestDocument('<div id="test-id" className="test-class"></div>');
+    const tag = {
+      tagName: "div",
+      tagType: "opening" as const,
+      tagRange: new vscode.Range(0, 0, 0, 41),
+    };
+
+    const result = findClassNamePos(document, tag);
+
+    assert.strictEqual(result.positionType, "endOfClassList");
+    assert.deepStrictEqual(result.position, new vscode.Position(0, 39));
   });
 });
