@@ -25,6 +25,12 @@ _Additional notes:_
 - If there is no bracket or tag under the cursor, it will use the bracket at the end of the line. This allows, for example, jumping to the end of a function while hovering over its name.
 - If you have a full line selected, it will also jump as if you were hovering over the end of the line. This allows you to very easily select entire functions.
 
+## Focus className
+Focuses the cursor at the end of the list of class names for the surrounding tag.
+
+- If there is no className property, it will create one automatically.
+- Supports matching for `class=""`, `className=`, or `className={cn("")}`
+
 
 ## Delete Selection with Matching Pairs
 

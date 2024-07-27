@@ -4,6 +4,7 @@ import { surroundWithTag } from "./commands/surroundWithTag";
 import { insertSelfClosingTag } from "./commands/insertSelfClosingTag";
 import { deleteSurroundingTagPair } from "./commands/deleteSurroundingTagPair";
 import { deleteSelectionWithMatchingPairs } from "./commands/deleteSelectionWithPairs";
+import { focusClassName } from "./commands/focusClassName";
 
 export function activate(context: vscode.ExtensionContext) {
   let surroundDisposable = vscode.commands.registerCommand(
@@ -26,13 +27,18 @@ export function activate(context: vscode.ExtensionContext) {
     "tagSurfer.deleteSelectionWithPairs",
     deleteSelectionWithMatchingPairs
   );
+  let findClassNameDisposable = vscode.commands.registerTextEditorCommand(
+    "tagSurfer.focusClassName",
+    focusClassName
+  );
 
   context.subscriptions.push(
     surroundDisposable,
     jumpDisposable,
     selfClosingDisposable,
     deleteSurroundingDisposable,
-    deleteWithPairsDisposable
+    deleteWithPairsDisposable,
+    findClassNameDisposable
   );
 }
 

@@ -35,6 +35,10 @@
       {
         "command": "tagSurfer.deleteSelectionWithPairs",
         "title": "TagSurfer: Delete Selection with Matching Pairs"
+      },
+      {
+        "command": "tagSurfer.focusClassName",
+        "title": "TagSurfer: Focus className"
       }
     ],
     "configuration": {

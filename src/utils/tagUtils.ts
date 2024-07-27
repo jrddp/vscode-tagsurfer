@@ -393,7 +393,7 @@ export function findClassNamePos(document: TextDocument, tag: Tag): ClassNamePos
     // convert char offset to line-char offset
     if (splitLines.length > 1) {
       let line = 0;
-      let i = -tag.tagRange.start.character;
+      let i = 0;
       while (i + splitLines[line].length + 1 < matchEndOffset) {
         i += splitLines[line].length;
         i += 1; // +1 to include the newline
@@ -401,7 +401,7 @@ export function findClassNamePos(document: TextDocument, tag: Tag): ClassNamePos
       }
       classNameEndPos = new Position(
         tag.tagRange.start.line + line,
-        matchEndOffset - i - tag.tagRange.start.character
+        matchEndOffset - i
       );
     }
     return {
