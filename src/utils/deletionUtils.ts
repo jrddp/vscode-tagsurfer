@@ -60,7 +60,8 @@ export function generateLineDeletions(
     }
     let lineText = document.lineAt(parseInt(line)).text;
     lineText = deleteRangesFromLine(lineText, deletion.ranges);
-    if (lineText.trim() === "") {
+    const trimmedLine = lineText.trim();
+    if (trimmedLine === "" || trimmedLine === ";") {
       deletion.fullDelete = true;
     }
   }
