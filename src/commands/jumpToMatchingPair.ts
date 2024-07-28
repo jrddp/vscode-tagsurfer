@@ -30,10 +30,14 @@ export function jumpToMatchingPair(): void {
   }
 
   // cursor position failed or selection is block level. use end of line and prioritize tags
-  const cursorPos = new Position(
+  let cursorPos = new Position(
     selection.active.line,
     document.lineAt(selection.active.line).text.length - 1
   );
+  // ignore trailing semicolon
+  if (document.getText(new Range(cursorPos, cursorPos.translate(0, 1))) === ";") {
+    cursorPos = cursorPos.translate(0, -1);
+  }
   const character = document.getText(new Range(cursorPos, cursorPos.translate(0, 1)));
 
   if (attempTagJump(editor, selection, cursorPos)) {
@@ -43,7 +47,7 @@ export function jumpToMatchingPair(): void {
   if (attemptBracketJump(editor, selection, cursorPos, character)) {
     return;
   }
-}
+};
 
 function attemptBracketJump(
   editor: vscode.TextEditor,
