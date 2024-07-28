@@ -1,5 +1,6 @@
 ![TagSurfer Banner](https://raw.githubusercontent.com/jrddp/vscode-tagsurfer/main/images/Banner.png)
 
+<h1 align="center">TagSurfer for VSCode</h1>
 <h2 align="center">Streamline tag creation and navigation in HTML, JSX, and more.</h2>
 
 # Commands
