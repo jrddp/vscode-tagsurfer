@@ -100,7 +100,7 @@ suite("Tag Utils Test Suite: surroundWithTag", () => {
   });
 });
 
-suite("Tag Utils Test Suite: jumpToMatchingPair", () => {
+suite("Tag Utils Test Suite: getEnclosingTag", () => {
   test("getEnclosingTag with cursor inside opening tag", async () => {
     const doc = await createTestDocument('<div class="test">Hello</div>');
     const result = getEnclosingTag(doc, new vscode.Position(0, 5));
@@ -155,6 +155,22 @@ suite("Tag Utils Test Suite: jumpToMatchingPair", () => {
     assert.strictEqual(result?.tagName, "br");
     assert.strictEqual(result?.tagType, "selfClosing");
     assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 10, 0, 15));
+  });
+
+  test("getEnclosingTag with empty opening tag", async () => {
+    const doc = await createTestDocument("<>Hello</>");
+    const result = getEnclosingTag(doc, new vscode.Position(0, 1));
+    assert.strictEqual(result?.tagName, "");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 0, 0, 2));
+  });
+
+  test("getEnclosingTag with empty closing tag", async () => {
+    const doc = await createTestDocument("<>Hello</>");
+    const result = getEnclosingTag(doc, new vscode.Position(0, 8));
+    assert.strictEqual(result?.tagName, "");
+    assert.strictEqual(result?.tagType, "closing");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 7, 0, 10));
   });
 });
 
@@ -349,6 +365,32 @@ suite("findPairedTag Test Suite", () => {
     const result = findPairedTag(doc, tag);
     assert.strictEqual(result, null);
   });
+
+  test("Find paired tag - empty tags", async () => {
+    const doc = await createTestDocument("<>Hello</>");
+    const tag: Tag = {
+      tagName: "",
+      tagType: "opening",
+      tagRange: new vscode.Range(0, 0, 0, 2),
+    };
+    const result = findPairedTag(doc, tag);
+    assert.strictEqual(result?.tagName, "");
+    assert.strictEqual(result?.tagType, "closing");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 7, 0, 10));
+  });
+
+  test("Find paired tag - nested empty tags", async () => {
+    const doc = await createTestDocument("<><>Hello</></>");
+    const tag: Tag = {
+      tagName: "",
+      tagType: "opening",
+      tagRange: new vscode.Range(0, 0, 0, 2),
+    };
+    const result = findPairedTag(doc, tag);
+    assert.strictEqual(result?.tagName, "");
+    assert.strictEqual(result?.tagType, "closing");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 12, 0, 15));
+  });
 });
 
 suite("getSurroundingTag Test Suite", () => {
@@ -446,6 +488,22 @@ suite("getSurroundingTag Test Suite", () => {
     const doc = await createTestDocument("Just some text");
     const result = getSurroundingTag(doc, new vscode.Position(0, 10));
     assert.strictEqual(result, null);
+  });
+
+  test("Cursor inside empty tag", async () => {
+    const doc = await createTestDocument("<>content</>");
+    const result = getSurroundingTag(doc, new vscode.Position(0, 1));
+    assert.strictEqual(result?.tagName, "");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 0, 0, 2));
+  });
+
+  test("Nested empty tags", async () => {
+    const doc = await createTestDocument("<><span>content</span></>");
+    const result = getSurroundingTag(doc, new vscode.Position(0, 8));
+    assert.strictEqual(result?.tagName, "span");
+    assert.strictEqual(result?.tagType, "opening");
+    assert.deepStrictEqual(result?.tagRange, new vscode.Range(0, 2, 0, 8));
   });
 });
 
@@ -603,6 +661,40 @@ suite("getAllTagsInSelection Test Suite", () => {
       tagRange: new vscode.Range(0, 0, 2, 12),
     });
   });
+
+  test("Empty tags in selection", async () => {
+    const doc = await createTestDocument("<>content</>");
+    const selection = new vscode.Range(0, 0, 0, 12);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 2);
+    assert.deepStrictEqual(result[0], {
+      tagName: "",
+      tagType: "opening",
+      tagRange: new vscode.Range(0, 0, 0, 2),
+    });
+    assert.deepStrictEqual(result[1], {
+      tagName: "",
+      tagType: "closing",
+      tagRange: new vscode.Range(0, 9, 0, 12),
+    });
+  });
+
+  test("Nested empty tags", async () => {
+    const doc = await createTestDocument("<><span>content</span></>");
+    const selection = new vscode.Range(0, 0, 0, 25);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 4);
+    assert.deepStrictEqual(result[0], {
+      tagName: "",
+      tagType: "opening",
+      tagRange: new vscode.Range(0, 0, 0, 2),
+    });
+    assert.deepStrictEqual(result[3], {
+      tagName: "",
+      tagType: "closing",
+      tagRange: new vscode.Range(0, 22, 0, 25),
+    });
+  });
 });
 
 suite("findClassNamePos Tests", () => {
@@ -677,7 +769,9 @@ suite("findClassNamePos Tests", () => {
   });
 
   test("className in multi-line tag: 2nd line", async () => {
-    const document = await createTestDocument(`<div\n    className="test-class"\n    id="test-id"\n></div>`);
+    const document = await createTestDocument(
+      `<div\n    className="test-class"\n    id="test-id"\n></div>`
+    );
     const tag = {
       tagName: "div",
       tagType: "opening" as const,
@@ -691,7 +785,9 @@ suite("findClassNamePos Tests", () => {
   });
 
   test("className in multi-line tag: 3rd line", async () => {
-    const document = await createTestDocument(`<div\n    id="test-id"\n    className="test-class"\n></div>`);
+    const document = await createTestDocument(
+      `<div\n    id="test-id"\n    className="test-class"\n></div>`
+    );
     const tag = {
       tagName: "div",
       tagType: "opening" as const,
@@ -705,7 +801,9 @@ suite("findClassNamePos Tests", () => {
   });
 
   test("className in multi-line tag with offset", async () => {
-    const document = await createTestDocument(`  <div\n    className="test-class"\n    id="test-id"\n></div>`);
+    const document = await createTestDocument(
+      `  <div\n    className="test-class"\n    id="test-id"\n></div>`
+    );
     const tag = {
       tagName: "div",
       tagType: "opening" as const,
@@ -719,7 +817,9 @@ suite("findClassNamePos Tests", () => {
   });
 
   test("className in multi-line tag with offset: 3rd line", async () => {
-    const document = await createTestDocument(`  <div\n    id="test-id"\n    className="test-class"\n></div>`);
+    const document = await createTestDocument(
+      `  <div\n    id="test-id"\n    className="test-class"\n></div>`
+    );
     const tag = {
       tagName: "div",
       tagType: "opening" as const,

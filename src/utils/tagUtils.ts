@@ -109,13 +109,13 @@ export function getEnclosingTag(document: TextDocument, position: Position): Tag
   }
 
   const tagText = document.getText(new Range(startPosition, endPosition));
-  const tagNameMatch = tagText.match(/<\/?(\w+)/);
+  const tagNameMatch = tagText.match(/<\/?(\w*)/);
   if (!tagNameMatch) {
     return null; // Invalid tag format
   }
 
-  const tagName = tagNameMatch[1];
-  let tagType: "opening" | "closing" | "selfClosing";
+  const tagName = tagNameMatch[1] || "";
+  let tagType: TagType;
 
   if (tagText.startsWith("</")) {
     tagType = "closing";
@@ -177,7 +177,7 @@ export function findPairedTag(document: TextDocument, tag: Tag): Tag | null {
         } else if (parsingName) {
           const char = line[j];
           // check if char is a valid tag name character
-          if (char.match(/[\/a-zA-Z0-9]/)) {
+          if (char.match(/[^> \t]/)) {
             currentTagName += char;
           } else {
             parsingName = false;
@@ -338,13 +338,10 @@ export async function deleteTag(
 }
 
 export function getAllTagsInSelection(document: TextDocument, selection: Range | Selection): Tag[] {
-  let selStart = selection.start;
-  let selEnd = selection.end;
-
   const text = document.getText(selection);
   const tags: Tag[] = [];
   let match;
-  const tagRegex = /<\/?(\w+)(?:\s+[^>]*)?>/g;
+  const tagRegex = /<\/?(\w*)(?:\s+[^>]*)?>/g;
 
   while ((match = tagRegex.exec(text)) !== null) {
     const startPos = document.positionAt(document.offsetAt(selection.start) + match.index);
@@ -399,10 +396,7 @@ export function findClassNamePos(document: TextDocument, tag: Tag): ClassNamePos
         i += 1; // +1 to include the newline
         line++;
       }
-      classNameEndPos = new Position(
-        tag.tagRange.start.line + line,
-        matchEndOffset - i
-      );
+      classNameEndPos = new Position(tag.tagRange.start.line + line, matchEndOffset - i);
     }
     return {
       position: classNameEndPos,
