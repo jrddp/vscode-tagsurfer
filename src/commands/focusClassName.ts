@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { getSurroundingTag, findClassNamePos, findPairedTag } from "../utils/tagUtils"; // Adjust the import path as needed
+import { getFileType } from "../utils/fileUtils";
 
 export async function focusClassName(): Promise<void> {
   const editor = vscode.window.activeTextEditor;
@@ -24,8 +25,9 @@ export async function focusClassName(): Promise<void> {
   let newPosition = classNamePos.position;
 
   if (classNamePos.positionType === "endOfName") {
+    const addString = getFileType(document) === "html" ? ' class=""' : ' className=""';
+
     editor.edit(editBuilder => {
-      const addString = ' className=""';
       editBuilder.insert(newPosition, addString);
       newPosition = newPosition.translate(0, addString.length - 1);
     });
