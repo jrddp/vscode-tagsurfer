@@ -10,6 +10,13 @@ export async function focusClassName(): Promise<void> {
   }
 
   const document = editor.document;
+  const fileType = getFileType(document);
+
+  if (fileType === "other") {
+    console.error("TagSurfer: Focus className - Unsupported file type");
+    return;
+  }
+
   const cursorPos = editor.selection.active;
 
   let surroundingTag = getSurroundingTag(document, cursorPos);
@@ -25,7 +32,7 @@ export async function focusClassName(): Promise<void> {
   let newPosition = classNamePos.position;
 
   if (classNamePos.positionType === "endOfName") {
-    const addString = getFileType(document) === "html" ? ' class=""' : ' className=""';
+    const addString = fileType === "html" ? ' class=""' : ' className=""';
 
     editor.edit(editBuilder => {
       editBuilder.insert(newPosition, addString);
