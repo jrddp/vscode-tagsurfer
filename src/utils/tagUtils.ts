@@ -375,29 +375,16 @@ export function findClassNamePos(document: TextDocument, tag: Tag): ClassNamePos
   const tagText = document.getText(tag.tagRange);
 
   // match class, className, or className={cn( up until (including) the closing quote
-  const classNameRegex = /class(?:Name)?\s*=\s*(?:{cn\()?["'][^"']*["']/;
+  const classNameRegex = /class(?:Name)?\s*=\s*(?:{cn\()?["'][^"']*/;
   const match = tagText.match(classNameRegex);
 
   if (match) {
-    // todo handle multiline
     const matchStartOffset = match.index!;
-    const matchEndOffset = matchStartOffset + match[0].length - 1; // -1 to position inside the closing quote
+    const matchEndOffset = matchStartOffset + match[0].length;
     let classNameEndPos = document.positionAt(
       document.offsetAt(tag.tagRange.start) + matchEndOffset
     );
 
-    const splitLines = tagText.split("\n");
-    // convert char offset to line-char offset
-    if (splitLines.length > 1) {
-      let line = 0;
-      let i = 0;
-      while (i + splitLines[line].length + 1 < matchEndOffset) {
-        i += splitLines[line].length;
-        i += 1; // +1 to include the newline
-        line++;
-      }
-      classNameEndPos = new Position(tag.tagRange.start.line + line, matchEndOffset - i);
-    }
     return {
       position: classNameEndPos,
       positionType: "endOfClassList",
