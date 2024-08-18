@@ -109,7 +109,7 @@ export function getEnclosingTag(document: TextDocument, position: Position): Tag
   }
 
   const tagText = document.getText(new Range(startPosition, endPosition));
-  const tagNameMatch = tagText.match(/<\/?(\w*)/);
+  const tagNameMatch = tagText.match(/<\/?([^> \t\n]*)/);
   if (!tagNameMatch) {
     return null; // Invalid tag format
   }
@@ -341,7 +341,7 @@ export function getAllTagsInSelection(document: TextDocument, selection: Range |
   const text = document.getText(selection);
   const tags: Tag[] = [];
   let match;
-  const tagRegex = /<\/?(\w*)(?:\s+[^>]*)?>/g;
+  const tagRegex = /<\/?([^> \t\n]*)(?:\s+[^>]*)?>/g;
 
   while ((match = tagRegex.exec(text)) !== null) {
     const startPos = document.positionAt(document.offsetAt(selection.start) + match.index);
