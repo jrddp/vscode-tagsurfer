@@ -177,7 +177,7 @@ export function findPairedTag(document: TextDocument, tag: Tag): Tag | null {
         } else if (parsingName) {
           const char = line[j];
           // check if char is a valid tag name character
-          if (char.match(/[^> \t]/)) {
+          if (char.match(/[^> \t\n]/)) {
             currentTagName += char;
           } else {
             parsingName = false;
@@ -196,7 +196,7 @@ export function findPairedTag(document: TextDocument, tag: Tag): Tag | null {
         if (line[j] === ">") {
           tagEnd = new Position(i, j + 1);
         } else if (line[j] === "<") {
-          currentTagName = line.substring(j).match(/<([\/a-zA-Z0-9]+)/)?.[1] ?? "";
+          currentTagName = line.substring(j).match(/<([^> \t\n]+)/)?.[1] ?? "";
           if (currentTagName === tag.tagName) {
             if (nestingLevel === 0) {
               return {
