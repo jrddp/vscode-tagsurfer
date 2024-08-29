@@ -1,7 +1,7 @@
 import { Range, Position, TextDocument, TextEditorEdit } from "vscode";
 import { addToRanges } from "./selectionUtils";
 
-interface LineDeletion {
+export interface LineDeletion {
   line: number;
   ranges: Range[];
   fullDelete: boolean;

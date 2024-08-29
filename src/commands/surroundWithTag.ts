@@ -17,6 +17,8 @@ export async function surroundWithTag() {
   const document = editor.document;
   const selections = editor.selections;
 
+  let newSelections: vscode.Selection[] = [];
+
   await editor.edit(
     editBuilder => {
       selections.forEach((selection, index) => {
@@ -64,13 +66,15 @@ export async function surroundWithTag() {
 
         editBuilder.replace(selectionRange, newContent);
 
-        // Update the selection
-        const newSelection = new vscode.Selection(newPosition, newPosition);
-        editor.selections[index] = newSelection;
+        // Store the new selection
+        newSelections.push(new vscode.Selection(newPosition, newPosition));
       });
     },
     { undoStopBefore: false, undoStopAfter: true }
   );
+
+  // Set all new selections at once
+  editor.selections = newSelections;
 
   // Force exit from Vim visual mode to normal mode
   if (selections.some(selection => !selection.isEmpty)) {
@@ -81,11 +85,8 @@ export async function surroundWithTag() {
     }
   }
 
-  // setImmediate ensures the edit has been applied before updating the selection
-  setImmediate(() => {
-    editor.selections = editor.selections;
-    if (autoRename) {
-      setImmediate(() => vscode.commands.executeCommand("editor.action.rename"));
-    }
-  });
+  // If autoRename is enabled, trigger rename action
+  if (autoRename) {
+    vscode.commands.executeCommand("editor.action.rename");
+  }
 }
