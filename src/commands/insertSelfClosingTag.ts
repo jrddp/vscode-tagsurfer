@@ -13,15 +13,16 @@ export function insertSelfClosingTag(editor: vscode.TextEditor): void {
       });
     })
     .then(() => {
-      // move the cursor to the tag name
+      // move the cursor to the tag name for each selection
       const newSelections = editor.selections.map(selection => {
         // from <div />$ to <di$v />
         const newPosition = selection.active.translate(0, -4);
         return new vscode.Selection(newPosition, newPosition);
       });
       editor.selections = newSelections;
+
       if (autoRename) {
-        setImmediate(() => vscode.commands.executeCommand("editor.action.rename"));
+        vscode.commands.executeCommand("editor.action.rename");
       }
     });
 }

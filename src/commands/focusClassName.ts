@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { getSurroundingTag, findClassNamePos, findPairedTag } from "../utils/tagUtils"; // Adjust the import path as needed
+import { getSurroundingTag, findClassNamePos, findPairedTag } from "../utils/tagUtils";
 import { getFileType } from "../utils/fileUtils";
 
 export async function focusClassName(): Promise<void> {
@@ -17,31 +17,48 @@ export async function focusClassName(): Promise<void> {
     return;
   }
 
-  const cursorPos = editor.selection.active;
+  let editsToApply: { position: vscode.Position; text: string }[] = [];
+  let newSelections: vscode.Selection[] = [];
 
-  let surroundingTag = getSurroundingTag(document, cursorPos);
-  if (surroundingTag?.tagType === "closing") {
-    surroundingTag = findPairedTag(document, surroundingTag);
-  }
-  if (!surroundingTag) {
-    vscode.window.showInformationMessage("No surrounding tag found.");
-    return;
-  }
+  editor.selections.forEach(selection => {
+    const cursorPos = selection.active;
 
-  const classNamePos = findClassNamePos(document, surroundingTag);
-  let newPosition = classNamePos.position;
+    let surroundingTag = getSurroundingTag(document, cursorPos);
+    if (surroundingTag?.tagType === "closing") {
+      surroundingTag = findPairedTag(document, surroundingTag);
+    }
+    if (!surroundingTag) {
+      vscode.window.showInformationMessage("No surrounding tag found.");
+      newSelections.push(selection); // Keep original selection if no tag found
+      return;
+    }
 
-  if (classNamePos.positionType === "endOfName") {
-    const addString = fileType === "html" ? ' class=""' : ' className=""';
+    const classNamePos = findClassNamePos(document, surroundingTag);
+    let newPosition = classNamePos.position;
 
-    editor.edit(editBuilder => {
-      editBuilder.insert(newPosition, addString);
+    if (classNamePos.positionType === "endOfName") {
+      const addString = fileType === "html" ? ' class=""' : ' className=""';
+      editsToApply.push({ position: newPosition, text: addString });
       newPosition = newPosition.translate(0, addString.length - 1);
+    }
+
+    newSelections.push(new vscode.Selection(newPosition, newPosition));
+  });
+
+  // Apply all edits in a single edit operation
+  if (editsToApply.length > 0) {
+    await editor.edit(editBuilder => {
+      editsToApply.forEach(edit => {
+        editBuilder.insert(edit.position, edit.text);
+      });
     });
   }
 
-  await vscode.commands.executeCommand("revealLine", { lineNumber: newPosition.line });
-  editor.selection = new vscode.Selection(newPosition, newPosition);
+  editor.selections = newSelections;
 
-  editor.revealRange(new vscode.Range(newPosition, newPosition));
+  // Reveal the primary selection (first cursor)
+  if (newSelections.length > 0) {
+    const primarySelection = newSelections[0];
+    editor.revealRange(new vscode.Range(primarySelection.start, primarySelection.end));
+  }
 }
