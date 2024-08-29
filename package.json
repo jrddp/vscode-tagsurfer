@@ -6,7 +6,7 @@
   "repository": "jrddp/vscode-tagsurfer",
   "homepage": "https://github.com/jrddp/vscode-tagsurfer",
   "icon": "images/Icon_Small.png",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "engines": {
     "vscode": "^1.91.0"
   },
