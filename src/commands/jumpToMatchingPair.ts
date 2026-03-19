@@ -3,6 +3,8 @@ import { getEnclosingTag, findPairedTag } from "../utils/tagUtils";
 import { getSelectionType, isBlock, updateSelection } from "../utils/selectionUtils";
 import { Position, Range } from "vscode";
 import { asBracketLoc, findPairedBracketPos } from "../utils/bracketUtils";
+import { getFileType } from "../utils/fileUtils";
+import { findNextSvelteBlockTag } from "../utils/svelteBlockUtils";
 
 export function jumpToMatchingPair(): void {
   const editor = vscode.window.activeTextEditor;
@@ -84,6 +86,15 @@ function attempTagJump(
   cursorPos: Position,
   selectionId: number
 ): boolean {
+  if (getFileType(editor.document) === "svelte") {
+    const nextSvelteBlockTag = findNextSvelteBlockTag(editor.document, cursorPos);
+    if (nextSvelteBlockTag) {
+      const newPosition = nextSvelteBlockTag.tagRange.start.translate(0, 1);
+      updateSelection(editor, selection, newPosition, selectionId);
+      return true;
+    }
+  }
+
   const enclosingTag = getEnclosingTag(editor.document, cursorPos);
   if (enclosingTag) {
     const pairedTag = findPairedTag(editor.document, enclosingTag);

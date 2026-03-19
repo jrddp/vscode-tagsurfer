@@ -37,7 +37,7 @@ export async function focusClassName(): Promise<void> {
     let newPosition = classNamePos.position;
 
     if (classNamePos.positionType === "endOfName") {
-      const addString = fileType === "html" ? ' class=""' : ' className=""';
+      const addString = fileType === "jsx_tsx" ? ' className=""' : ' class=""';
       editsToApply.push({ position: newPosition, text: addString });
       newPosition = newPosition.translate(0, addString.length - 1);
     }
