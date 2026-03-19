@@ -1,0 +1,79 @@
+{
+  "app": {
+    "name": "TagSurfer Playground",
+    "version": "1.2.3",
+    "features": {
+      "symbols": {
+        "enabled": true,
+        "wrapNavigation": true,
+        "kinds": [
+          "class",
+          "function",
+          "method",
+          "property"
+        ]
+      },
+      "formatting": {
+        "preserveComments": true,
+        "normalizeWhitespace": false,
+        "overrides": [
+          {
+            "language": "typescript",
+            "indentSize": 2,
+            "lineWidth": 100
+          },
+          {
+            "language": "html",
+            "indentSize": 2,
+            "lineWidth": 120
+          }
+        ]
+      }
+    },
+    "workspaces": [
+      {
+        "name": "primary",
+        "folders": [
+          "/src",
+          "/src/components",
+          "/src/features/navigation"
+        ],
+        "metadata": {
+          "favorite": true,
+          "createdAt": "2026-03-19T01:00:00Z",
+          "lastOpenedBy": null
+        }
+      },
+      {
+        "name": "sandbox",
+        "folders": [
+          "/playground",
+          "/fixtures",
+          "/examples/nested"
+        ],
+        "metadata": {
+          "favorite": false,
+          "createdAt": "2026-03-18T20:30:00Z",
+          "lastOpenedBy": "jard"
+        }
+      }
+    ]
+  },
+  "telemetry": {
+    "sampling": 0.15,
+    "destinations": {
+      "local": {
+        "enabled": true,
+        "path": "/tmp/tagsurfer-events.jsonl"
+      },
+      "remote": {
+        "enabled": false,
+        "endpoint": "https://example.invalid/collect",
+        "headers": {
+          "x-environment": "development",
+          "x-build": "playground"
+        }
+      }
+    }
+  }
+}

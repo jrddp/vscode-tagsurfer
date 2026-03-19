@@ -30,6 +30,23 @@ _Additional notes:_
 - If there is no bracket or tag under the cursor, it will use the bracket at the end of the line. This allows, for example, jumping to the end of a function while hovering over its name.
 - If you have a full line selected, it will also jump as if you were hovering over the end of the line. This allows you to very easily select entire functions.
 
+## Jump to Next / Previous Sibling
+
+Jumps to the next or previous symbol header on the same level according to the active document's symbol provider.
+
+- Intended primarily for TS/JS-style files, where document symbols map cleanly to functions, methods, classes, and similar declarations.
+- When the cursor is inside a symbol body, it will jump to the next or previous sibling header at that level.
+- When the cursor is in whitespace inside a parent body, it will try to jump between that parent's direct child symbols.
+- Reaching the end of a sibling list wraps back around to the other end.
+
+## Jump to Parent / Child
+
+Moves through the document symbol tree one level at a time.
+
+- `Jump to Parent` moves to the current containing symbol header, and if you are already on that header it moves outward to the next parent header.
+- `Jump to Child` always descends to the first child symbol.
+- If the current symbol has no children, `Jump to Child` falls through to the next sibling at the same level.
+
 ## Focus className
 
 ![Focus className Gif](https://raw.githubusercontent.com/jrddp/vscode-tagsurfer/main/images/focusClassName.gif)

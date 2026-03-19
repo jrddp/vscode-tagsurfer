@@ -17,10 +17,14 @@ export async function focusClassName(): Promise<void> {
     return;
   }
 
-  let editsToApply: { position: vscode.Position; text: string }[] = [];
-  let newSelections: vscode.Selection[] = [];
+  const selectionPlans: {
+    index: number;
+    anchorOffset: number;
+    localOffset: number;
+    insertText: string | null;
+  }[] = [];
 
-  editor.selections.forEach(selection => {
+  editor.selections.forEach((selection, index) => {
     const cursorPos = selection.active;
 
     let surroundingTag = getSurroundingTag(document, cursorPos);
@@ -29,29 +33,61 @@ export async function focusClassName(): Promise<void> {
     }
     if (!surroundingTag) {
       vscode.window.showInformationMessage("No surrounding tag found.");
-      newSelections.push(selection); // Keep original selection if no tag found
+      selectionPlans.push({
+        index,
+        anchorOffset: document.offsetAt(selection.active),
+        localOffset: 0,
+        insertText: null,
+      });
       return;
     }
 
     const classNamePos = findClassNamePos(document, surroundingTag);
-    let newPosition = classNamePos.position;
+    const anchorOffset = document.offsetAt(classNamePos.position);
 
     if (classNamePos.positionType === "endOfName") {
       const addString = fileType === "jsx_tsx" ? ' className=""' : ' class=""';
-      editsToApply.push({ position: newPosition, text: addString });
-      newPosition = newPosition.translate(0, addString.length - 1);
+      selectionPlans.push({
+        index,
+        anchorOffset,
+        localOffset: addString.length - 1,
+        insertText: addString,
+      });
+      return;
     }
 
-    newSelections.push(new vscode.Selection(newPosition, newPosition));
+    selectionPlans.push({
+      index,
+      anchorOffset,
+      localOffset: 0,
+      insertText: null,
+    });
   });
 
   // Apply all edits in a single edit operation
-  if (editsToApply.length > 0) {
+  if (selectionPlans.some(plan => plan.insertText !== null)) {
     await editor.edit(editBuilder => {
-      editsToApply.forEach(edit => {
-        editBuilder.insert(edit.position, edit.text);
+      selectionPlans.forEach(plan => {
+        if (plan.insertText) {
+          editBuilder.insert(document.positionAt(plan.anchorOffset), plan.insertText);
+        }
       });
     });
+  }
+
+  const newSelections: vscode.Selection[] = new Array(selectionPlans.length);
+  let delta = 0;
+
+  const orderedPlans = [...selectionPlans].sort((a, b) =>
+    a.anchorOffset === b.anchorOffset ? a.index - b.index : a.anchorOffset - b.anchorOffset
+  );
+
+  for (const plan of orderedPlans) {
+    const newPosition = editor.document.positionAt(plan.anchorOffset + delta + plan.localOffset);
+    newSelections[plan.index] = new vscode.Selection(newPosition, newPosition);
+    if (plan.insertText) {
+      delta += plan.insertText.length;
+    }
   }
 
   editor.selections = newSelections;

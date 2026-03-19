@@ -22,3 +22,26 @@ export async function showTestEditor(
   const document = await createTestDocument(content, fileExtension);
   return vscode.window.showTextDocument(document);
 }
+
+export async function flushEditorUpdates(): Promise<void> {
+  await new Promise(resolve => setTimeout(resolve, 0));
+}
+
+export async function withTagSurferSetting<T>(
+  settingName: string,
+  value: unknown,
+  run: () => Promise<T>
+): Promise<T> {
+  const config = vscode.workspace.getConfiguration("tagSurfer");
+  const inspect = config.inspect(settingName);
+  const previousValue =
+    inspect?.workspaceFolderValue ?? inspect?.workspaceValue ?? inspect?.globalValue;
+
+  await config.update(settingName, value, vscode.ConfigurationTarget.Global);
+
+  try {
+    return await run();
+  } finally {
+    await config.update(settingName, previousValue, vscode.ConfigurationTarget.Global);
+  }
+}
