@@ -307,9 +307,12 @@ export async function deleteTag(
 ): Promise<void> {
   const document = editor.document;
   if (!editBuilder) {
-    await editor.edit(editBuilder => {
-      deleteTag(editor, tag, editBuilder);
-    });
+    await editor.edit(
+      editBuilder => {
+        deleteTag(editor, tag, editBuilder);
+      },
+      { undoStopBefore: true, undoStopAfter: true }
+    );
     return;
   }
 

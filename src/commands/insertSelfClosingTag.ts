@@ -13,11 +13,14 @@ export async function insertSelfClosingTag(editor: vscode.TextEditor): Promise<v
     cursorOffset: 1,
   }));
 
-  await editor.edit(editBuilder => {
-    insertPlans.forEach(plan => {
-      editBuilder.insert(document.positionAt(plan.anchorOffset), plan.insertText);
-    });
-  });
+  await editor.edit(
+    editBuilder => {
+      insertPlans.forEach(plan => {
+        editBuilder.insert(document.positionAt(plan.anchorOffset), plan.insertText);
+      });
+    },
+    { undoStopBefore: true, undoStopAfter: true }
+  );
 
   const newSelections: vscode.Selection[] = new Array(insertPlans.length);
   let delta = 0;

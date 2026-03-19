@@ -109,7 +109,7 @@ export async function deleteSelectionWithMatchingPairs() {
       }
       applyLineDeletions(editBuilder, allLineDeletions);
     },
-    { undoStopBefore: false, undoStopAfter: true }
+    { undoStopBefore: true, undoStopAfter: true }
   );
 
   // Clear selections after deletion

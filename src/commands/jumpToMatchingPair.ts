@@ -6,6 +6,8 @@ import { asBracketLoc, findPairedBracketPos } from "../utils/bracketUtils";
 import { getFileType } from "../utils/fileUtils";
 import { findNextSvelteBlockTag } from "../utils/svelteBlockUtils";
 
+type TagJumpResult = "matched" | "no-tag" | "ignored" | "missing-pair";
+
 export function jumpToMatchingPair(): void {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
@@ -28,7 +30,12 @@ export function jumpToMatchingPair(): void {
         return editor.selections[index];
       }
 
-      if (attempTagJump(editor, selection, cursorPos, index)) {
+      const tagJumpResult = attemptTagJump(editor, selection, cursorPos, index);
+      if (
+        tagJumpResult === "matched" ||
+        tagJumpResult === "missing-pair" ||
+        tagJumpResult === "ignored"
+      ) {
         return editor.selections[index];
       }
     }
@@ -44,7 +51,12 @@ export function jumpToMatchingPair(): void {
     }
     const character = document.getText(new Range(cursorPos, cursorPos.translate(0, 1)));
 
-    if (attempTagJump(editor, selection, cursorPos, index)) {
+    const tagJumpResult = attemptTagJump(editor, selection, cursorPos, index);
+    if (
+      tagJumpResult === "matched" ||
+      tagJumpResult === "missing-pair" ||
+      tagJumpResult === "ignored"
+    ) {
       return editor.selections[index];
     }
 
@@ -80,33 +92,37 @@ function attemptBracketJump(
   }
 }
 
-function attempTagJump(
+function attemptTagJump(
   editor: vscode.TextEditor,
   selection: vscode.Selection,
   cursorPos: Position,
   selectionId: number
-): boolean {
+): TagJumpResult {
   if (getFileType(editor.document) === "svelte") {
     const nextSvelteBlockTag = findNextSvelteBlockTag(editor.document, cursorPos);
     if (nextSvelteBlockTag) {
       const newPosition = nextSvelteBlockTag.tagRange.start.translate(0, 1);
       updateSelection(editor, selection, newPosition, selectionId);
-      return true;
+      return "matched";
     }
   }
 
   const enclosingTag = getEnclosingTag(editor.document, cursorPos);
-  if (enclosingTag) {
-    const pairedTag = findPairedTag(editor.document, enclosingTag);
-    if (pairedTag) {
-      const newPosition = pairedTag.tagRange.start.translate(0, 1);
-      updateSelection(editor, selection, newPosition, selectionId);
-      return true;
-    } else {
-      vscode.window.showInformationMessage(
-        `Unable to find matching pair for <${enclosingTag.tagName}>.`
-      );
-    }
+  if (!enclosingTag) {
+    return "no-tag";
   }
-  return false;
+
+  if (enclosingTag.tagType === "selfClosing") {
+    return "ignored";
+  }
+
+  const pairedTag = findPairedTag(editor.document, enclosingTag);
+  if (pairedTag) {
+    const newPosition = pairedTag.tagRange.start.translate(0, 1);
+    updateSelection(editor, selection, newPosition, selectionId);
+    return "matched";
+  }
+
+  vscode.window.showErrorMessage(`Unable to find matching pair for <${enclosingTag.tagName}>.`);
+  return "missing-pair";
 }

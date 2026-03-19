@@ -7,7 +7,7 @@ import { focusClassName } from "../commands/focusClassName";
 import { insertSelfClosingTag } from "../commands/insertSelfClosingTag";
 import { jumpToMatchingPair } from "../commands/jumpToMatchingPair";
 import { surroundWithTag } from "../commands/surroundWithTag";
-import { showTestEditor, withTagSurferSetting } from "./common";
+import { flushEditorUpdates, showTestEditor, withTagSurferSetting } from "./common";
 
 function nthIndexOf(text: string, needle: string, occurrence = 0): number {
   let searchStart = 0;
@@ -34,6 +34,52 @@ function positionAtText(
 function cursor(line: number, character: number): vscode.Selection {
   const position = new vscode.Position(line, character);
   return new vscode.Selection(position, position);
+}
+
+async function withCapturedWindowMessages<T>(
+  run: (messages: { info: string[]; error: string[] }) => Promise<T> | T
+): Promise<T> {
+  const messages = { info: [] as string[], error: [] as string[] };
+  const windowApi = vscode.window as unknown as {
+    showInformationMessage: (...args: any[]) => Thenable<unknown>;
+    showErrorMessage: (...args: any[]) => Thenable<unknown>;
+  };
+  const originalShowInformationMessage = windowApi.showInformationMessage;
+  const originalShowErrorMessage = windowApi.showErrorMessage;
+
+  windowApi.showInformationMessage = async (...args: any[]) => {
+    messages.info.push(String(args[0]));
+    return undefined;
+  };
+  windowApi.showErrorMessage = async (...args: any[]) => {
+    messages.error.push(String(args[0]));
+    return undefined;
+  };
+
+  try {
+    return await run(messages);
+  } finally {
+    windowApi.showInformationMessage = originalShowInformationMessage;
+    windowApi.showErrorMessage = originalShowErrorMessage;
+  }
+}
+
+async function withMockedExecuteCommand<T>(
+  mock: (command: string, ...args: any[]) => Thenable<unknown> | unknown,
+  run: () => Promise<T> | T
+): Promise<T> {
+  const commandsApi = vscode.commands as unknown as {
+    executeCommand: (command: string, ...args: any[]) => Thenable<unknown>;
+  };
+  const originalExecuteCommand = commandsApi.executeCommand;
+
+  commandsApi.executeCommand = async (command: string, ...args: any[]) => mock(command, ...args);
+
+  try {
+    return await run();
+  } finally {
+    commandsApi.executeCommand = originalExecuteCommand;
+  }
 }
 
 suite("Command Coverage Test Suite", () => {
@@ -73,6 +119,7 @@ suite("Command Coverage Test Suite", () => {
         editor.selection = new vscode.Selection(0, 0, 0, 4);
 
         await surroundWithTag();
+        await flushEditorUpdates();
 
         assert.strictEqual(editor.document.getText(), "<strong>test</strong> value");
         assert.deepStrictEqual(
@@ -89,6 +136,7 @@ suite("Command Coverage Test Suite", () => {
         editor.selection = new vscode.Selection(0, 0, 2, 0);
 
         await surroundWithTag();
+        await flushEditorUpdates();
 
         assert.strictEqual(editor.document.getText(), "<section>\n  alpha\n  beta\n</section>\nomega");
         assert.deepStrictEqual(
@@ -98,19 +146,72 @@ suite("Command Coverage Test Suite", () => {
       });
     });
 
-    test("inserts an empty block tag and places the cursor between the tags for empty selections", async () => {
+    test("places the cursor on the opening tag name for indented multiline surrounds", async () => {
+      const editor = await showTestEditor("  alpha\n  beta\nomega");
+      editor.options = { insertSpaces: true, tabSize: 2 };
+      editor.selection = new vscode.Selection(0, 0, 2, 0);
+
+      await surroundWithTag();
+      await flushEditorUpdates();
+
+      assert.strictEqual(editor.document.getText(), "  <div>\n    alpha\n    beta\n  </div>\nomega");
+      assert.deepStrictEqual(editor.selection.active, new vscode.Position(0, 3));
+    });
+
+    test("inserts an empty block tag and leaves the cursor on the opening tag name for empty selections", async () => {
       await withTagSurferSetting("defaultBlockTag", "section", async () => {
         const editor = await showTestEditor("Hello");
         editor.selection = cursor(0, 5);
 
         await surroundWithTag();
+        await flushEditorUpdates();
 
         assert.strictEqual(editor.document.getText(), "Hello<section></section>");
         assert.deepStrictEqual(
           editor.selection.active,
-          positionAtText(editor.document, "<section></section>", 9)
+          positionAtText(editor.document, "<section></section>", 1)
         );
       });
+    });
+
+    test("wraps the word under the cursor when there is no explicit selection", async () => {
+      const editor = await showTestEditor("hello world");
+      editor.selection = cursor(0, 1);
+
+      await surroundWithTag();
+      await flushEditorUpdates();
+
+      assert.strictEqual(editor.document.getText(), "<span>hello</span> world");
+      assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "<span>", 1));
+    });
+
+    test("keeps empty block insertion behavior on whitespace and leaves the cursor on the opening tag name", async () => {
+      const editor = await showTestEditor("hello world");
+      editor.selection = cursor(0, 5);
+
+      await surroundWithTag();
+      await flushEditorUpdates();
+
+      assert.strictEqual(editor.document.getText(), "hello<div></div> world");
+      assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "<div></div>", 1));
+    });
+
+    test("reapplies the opening-tag cursor after Vim escape runs", async () => {
+      const editor = await showTestEditor("hello world");
+      editor.selection = new vscode.Selection(0, 0, 0, 5);
+
+      await withMockedExecuteCommand(async command => {
+        if (command === "extension.vim_escape") {
+          editor.selection = cursor(0, 18);
+        }
+        return undefined;
+      }, async () => {
+        await surroundWithTag();
+        await flushEditorUpdates();
+      });
+
+      assert.strictEqual(editor.document.getText(), "<span>hello</span> world");
+      assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "<span>", 1));
     });
   });
 
@@ -278,6 +379,32 @@ suite("Command Coverage Test Suite", () => {
 
       assert.deepStrictEqual(editor.selection.start, new vscode.Position(0, 0));
       assert.deepStrictEqual(editor.selection.end, new vscode.Position(2, 1));
+    });
+
+    test("ignores self-closing tags without showing a message", async () => {
+      const editor = await showTestEditor("<CharacterSprite />");
+      editor.selection = cursor(0, 2);
+
+      await withCapturedWindowMessages(messages => {
+        jumpToMatchingPair();
+
+        assert.deepStrictEqual(editor.selection.active, new vscode.Position(0, 2));
+        assert.deepStrictEqual(messages.info, []);
+        assert.deepStrictEqual(messages.error, []);
+      });
+    });
+
+    test("shows an error when a non-self-closing tag is missing its pair", async () => {
+      const editor = await showTestEditor("<div>Hello");
+      editor.selection = cursor(0, 2);
+
+      await withCapturedWindowMessages(messages => {
+        jumpToMatchingPair();
+
+        assert.deepStrictEqual(editor.selection.active, new vscode.Position(0, 2));
+        assert.deepStrictEqual(messages.info, []);
+        assert.deepStrictEqual(messages.error, ["Unable to find matching pair for <div>."]);
+      });
     });
   });
 });

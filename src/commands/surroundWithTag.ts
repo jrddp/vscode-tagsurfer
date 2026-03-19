@@ -3,6 +3,28 @@ import { getSelectionType } from "../utils/selectionUtils";
 import { wrapContent } from "../utils/tagUtils";
 import { getSetting } from "../config";
 
+function getWordRangeUnderCursor(
+  document: vscode.TextDocument,
+  position: vscode.Position
+): vscode.Range | null {
+  const lineText = document.lineAt(position.line).text;
+  if (position.character >= lineText.length) {
+    return null;
+  }
+
+  const currentCharacter = lineText[position.character];
+  if (/\s/.test(currentCharacter)) {
+    return null;
+  }
+
+  return document.getWordRangeAtPosition(position) ?? null;
+}
+
+function getOpeningTagCursorOffset(newContent: string, tagName: string): number {
+  const openingTagStart = newContent.indexOf(`<${tagName}>`);
+  return openingTagStart >= 0 ? openingTagStart + 1 : 1;
+}
+
 export async function surroundWithTag() {
   const blockTag = getSetting("defaultBlockTag");
   const inlineTag = getSetting("defaultInlineTag");
@@ -29,6 +51,12 @@ export async function surroundWithTag() {
     editBuilder => {
       selections.forEach((selection, index) => {
         let adjustedSelection = selection;
+        if (selection.isEmpty) {
+          const wordRange = getWordRangeUnderCursor(document, selection.active);
+          if (wordRange) {
+            adjustedSelection = new vscode.Selection(wordRange.start, wordRange.end);
+          }
+        }
 
         // adjust selections with trailing cursor on next line (happens when selecting with mouse)
         if (selection.start.line !== selection.end.line && selection.end.character === 0) {
@@ -52,17 +80,16 @@ export async function surroundWithTag() {
           case "inline":
           case "multiInline":
             newContent = wrapContent(editor, tagName, selectedText, true);
-            cursorOffset = 1;
+            cursorOffset = getOpeningTagCursorOffset(newContent, tagName);
             break;
           case "multiFullLine":
           case "fullLine":
             newContent = wrapContent(editor, tagName, selectedText, false);
-            const lenFirstLine = newContent.split("\n")[0].length;
-            cursorOffset = lenFirstLine - tagName.length - 1;
+            cursorOffset = getOpeningTagCursorOffset(newContent, tagName);
             break;
           case "none":
             newContent = wrapContent(editor, tagName, "", true);
-            cursorOffset = tagName.length + 2;
+            cursorOffset = getOpeningTagCursorOffset(newContent, tagName);
             break;
         }
 
@@ -76,7 +103,7 @@ export async function surroundWithTag() {
         });
       });
     },
-    { undoStopBefore: false, undoStopAfter: true }
+    { undoStopBefore: true, undoStopAfter: true }
   );
 
   const newSelections: vscode.Selection[] = new Array(pendingEdits.length);
@@ -93,9 +120,8 @@ export async function surroundWithTag() {
     delta += pendingEdit.newContent.length - (pendingEdit.endOffset - pendingEdit.startOffset);
   }
 
-  editor.selections = newSelections;
-
-  // Force exit from Vim visual mode to normal mode
+  // Vim can overwrite the selection when leaving visual mode, so reapply our target
+  // selection on the next tick after requesting the escape.
   if (selections.some(selection => !selection.isEmpty)) {
     try {
       await vscode.commands.executeCommand("extension.vim_escape");
@@ -104,8 +130,12 @@ export async function surroundWithTag() {
     }
   }
 
-  // If autoRename is enabled, trigger rename action
-  if (autoRename) {
-    vscode.commands.executeCommand("editor.action.rename");
-  }
+  setImmediate(() => {
+    editor.selections = newSelections;
+    if (autoRename) {
+      setImmediate(() => {
+        void vscode.commands.executeCommand("editor.action.rename");
+      });
+    }
+  });
 }

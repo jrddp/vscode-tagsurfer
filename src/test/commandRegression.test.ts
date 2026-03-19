@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { deleteSelectionWithMatchingPairs } from "../commands/deleteSelectionWithPairs";
 import { jumpToMatchingPair } from "../commands/jumpToMatchingPair";
 import { surroundWithTag } from "../commands/surroundWithTag";
-import { showTestEditor } from "./common";
+import { flushEditorUpdates, showTestEditor } from "./common";
 
 suite("Command Regression Test Suite", () => {
   test("surroundWithTag keeps same-line multi-cursor selections aligned", async () => {
@@ -12,6 +12,7 @@ suite("Command Regression Test Suite", () => {
     editor.selections = [new vscode.Selection(0, 0, 0, 3), new vscode.Selection(0, 4, 0, 7)];
 
     await surroundWithTag();
+    await flushEditorUpdates();
 
     assert.strictEqual(editor.document.getText(), "<span>one</span> <span>two</span>");
     assert.deepStrictEqual(

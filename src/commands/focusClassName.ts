@@ -66,13 +66,16 @@ export async function focusClassName(): Promise<void> {
 
   // Apply all edits in a single edit operation
   if (selectionPlans.some(plan => plan.insertText !== null)) {
-    await editor.edit(editBuilder => {
-      selectionPlans.forEach(plan => {
-        if (plan.insertText) {
-          editBuilder.insert(document.positionAt(plan.anchorOffset), plan.insertText);
-        }
-      });
-    });
+    await editor.edit(
+      editBuilder => {
+        selectionPlans.forEach(plan => {
+          if (plan.insertText) {
+            editBuilder.insert(document.positionAt(plan.anchorOffset), plan.insertText);
+          }
+        });
+      },
+      { undoStopBefore: true, undoStopAfter: true }
+    );
   }
 
   const newSelections: vscode.Selection[] = new Array(selectionPlans.length);

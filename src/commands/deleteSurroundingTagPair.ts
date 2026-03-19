@@ -152,7 +152,7 @@ export async function deleteSurroundingTagPair(editor: vscode.TextEditor): Promi
         }
       });
     },
-    { undoStopBefore: false, undoStopAfter: true }
+    { undoStopBefore: true, undoStopAfter: true }
   );
 
   const newSelections: vscode.Selection[] = new Array(deletePlans.length);
