@@ -24,7 +24,8 @@ export async function deleteSelectionWithMatchingPairs() {
   let allPairRanges: Range[] = [];
   let allLineDeletions: LineDeletion[] = [];
 
-  for (let effectiveSelection of effectiveSelections) {
+  for (let i = 0; i < effectiveSelections.length; i++) {
+    let effectiveSelection = effectiveSelections[i];
     const tags = getAllTagsInSelection(editor.document, effectiveSelection);
     const bracketLocs = getAllBracketsInSelection(editor.document, effectiveSelection);
 
@@ -97,7 +98,7 @@ export async function deleteSelectionWithMatchingPairs() {
     allPairRanges = allPairRanges.concat(pairRanges);
     allLineDeletions = allLineDeletions.concat(lineDeletions);
 
-    effectiveSelections[effectiveSelections.indexOf(effectiveSelection)] = effectiveSelection;
+    effectiveSelections[i] = effectiveSelection;
   }
 
   // delete those son of a guns!!

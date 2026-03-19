@@ -46,90 +46,138 @@ export function wrapContent(
   }
 }
 
-export function getEnclosingTag(document: TextDocument, position: Position): Tag | null {
-  const maxLines = 10; // Maximum number of lines to search in either direction
-  let startLine = Math.max(0, position.line - maxLines);
-  let endLine = Math.min(document.lineCount - 1, position.line + maxLines);
+function isPotentialTagStart(text: string, index: number): boolean {
+  const nextChar = text[index + 1];
+  return nextChar !== undefined && (nextChar === "!" || nextChar === "/" || nextChar === ">" || /[A-Za-z:_]/.test(nextChar));
+}
 
-  let startPosition: Position | null = null;
-  let endPosition: Position | null = null;
+function findTagEnd(text: string, startIndex: number): number {
+  let quote: string | null = null;
 
-  // Search backwards for opening '<'
-  let nestingLevel = 0;
-  for (let i = position.line; i >= startLine; i--) {
-    const line = document.lineAt(i).text;
-    const startChar = i === position.line ? position.character : line.length - 1;
-    for (let j = startChar; j >= 0; j--) {
-      if (line[j] === "<") {
-        if (nestingLevel === 0) {
-          startPosition = new Position(i, j);
-          break;
-        }
-        nestingLevel--;
-      } else if (line[j] === ">") {
-        if (i !== position.line || j !== startChar) {
-          nestingLevel++;
-        }
+  for (let i = startIndex; i < text.length; i++) {
+    const char = text[i];
+
+    if (quote) {
+      if (char === quote && text[i - 1] !== "\\") {
+        quote = null;
       }
+      continue;
     }
-    if (startPosition) {
-      break;
-    }
-  }
 
-  if (!startPosition) {
-    return null; // No opening '<' found
-  }
-
-  nestingLevel = 0;
-  // Search forwards for closing '>'
-  for (let i = position.line; i <= endLine; i++) {
-    const line = document.lineAt(i).text;
-    const startChar = i === position.line ? position.character : 0;
-    for (let j = startChar; j < line.length; j++) {
-      if (line[j] === ">") {
-        if (nestingLevel === 0) {
-          endPosition = new Position(i, j + 1);
-          break;
-        }
-        nestingLevel--;
-      } else if (line[j] === "<") {
-        if (i !== position.line || j !== startChar) {
-          nestingLevel++;
-        }
-      }
+    if (char === '"' || char === "'" || char === "`") {
+      quote = char;
+      continue;
     }
-    if (endPosition) {
-      break;
+
+    if (char === ">") {
+      return i;
     }
   }
 
-  if (!endPosition) {
-    return null; // No closing '>' found
+  return -1;
+}
+
+function parseTagText(tagText: string): Pick<Tag, "tagName" | "tagType"> | null {
+  if (!tagText.startsWith("<") || !tagText.endsWith(">")) {
+    return null;
   }
 
-  const tagText = document.getText(new Range(startPosition, endPosition));
-  const tagNameMatch = tagText.match(/<\/?([^> \t\n]*)/);
-  if (!tagNameMatch) {
-    return null; // Invalid tag format
+  if (tagText.startsWith("<!--")) {
+    return null;
   }
 
-  const tagName = tagNameMatch[1] || "";
-  let tagType: TagType;
+  const innerText = tagText.slice(1, -1).trim();
 
-  if (tagText.startsWith("</")) {
-    tagType = "closing";
-  } else if (tagText.endsWith("/>")) {
-    tagType = "selfClosing";
-  } else {
-    tagType = "opening";
+  if (innerText.startsWith("!")) {
+    return null;
   }
+
+  if (innerText.startsWith("/")) {
+    const tagName = innerText.slice(1).trim().match(/^[^\s/>]*/)?.[0] ?? "";
+    return {
+      tagName,
+      tagType: "closing",
+    };
+  }
+
+  const isSelfClosing = innerText.endsWith("/");
+  const normalizedInnerText = isSelfClosing ? innerText.slice(0, -1).trimEnd() : innerText;
+  const tagName = normalizedInnerText.match(/^[^\s/>]*/)?.[0] ?? "";
 
   return {
     tagName,
-    tagType,
-    tagRange: new Range(startPosition, endPosition),
+    tagType: isSelfClosing ? "selfClosing" : "opening",
   };
+}
+
+function scanTags(document: TextDocument, startOffset: number, endOffset: number): Tag[] {
+  const fullText = document.getText();
+  const clampedStart = Math.max(0, startOffset);
+  const clampedEnd = Math.min(fullText.length, endOffset);
+  const text = fullText.slice(clampedStart, clampedEnd);
+  const tags: Tag[] = [];
+  let index = 0;
+
+  while (index < text.length) {
+    const tagStart = text.indexOf("<", index);
+    if (tagStart === -1) {
+      break;
+    }
+
+    if (!isPotentialTagStart(text, tagStart)) {
+      index = tagStart + 1;
+      continue;
+    }
+
+    if (text.startsWith("<!--", tagStart)) {
+      const commentEnd = text.indexOf("-->", tagStart + 4);
+      if (commentEnd === -1) {
+        break;
+      }
+      index = commentEnd + 3;
+      continue;
+    }
+
+    const tagEnd = findTagEnd(text, tagStart + 1);
+    if (tagEnd === -1) {
+      break;
+    }
+
+    const parsedTag = parseTagText(text.slice(tagStart, tagEnd + 1));
+    if (parsedTag) {
+      const absoluteStart = clampedStart + tagStart;
+      const absoluteEnd = clampedStart + tagEnd + 1;
+      tags.push({
+        ...parsedTag,
+        tagRange: new Range(document.positionAt(absoluteStart), document.positionAt(absoluteEnd)),
+      });
+    }
+
+    index = tagEnd + 1;
+  }
+
+  return tags;
+}
+
+function isPositionInsideRange(range: Range, position: Position): boolean {
+  return !position.isBefore(range.start) && position.isBefore(range.end);
+}
+
+export function getEnclosingTag(document: TextDocument, position: Position): Tag | null {
+  const maxLines = 10; // Maximum number of lines to search in either direction
+  const startLine = Math.max(0, position.line - maxLines);
+  const endLine = Math.min(document.lineCount - 1, position.line + maxLines);
+  const startOffset = document.offsetAt(new Position(startLine, 0));
+  const endOffset = document.offsetAt(new Position(endLine, document.lineAt(endLine).text.length));
+
+  let matchingTag: Tag | null = null;
+  for (const tag of scanTags(document, startOffset, endOffset)) {
+    if (isPositionInsideRange(tag.tagRange, position)) {
+      matchingTag = tag;
+    }
+  }
+
+  return matchingTag ?? null;
 }
 
 export function findPairedTag(document: TextDocument, tag: Tag): Tag | null {
@@ -144,73 +192,52 @@ export function findPairedTag(document: TextDocument, tag: Tag): Tag | null {
     ? Math.min(document.lineCount - 1, searchStartLine + maxLines)
     : Math.max(0, searchStartLine - maxLines);
 
-  let nestingLevel = 0;
-  let currentTagName = "";
-  let parsingName = false;
-
   if (isOpeningTag) {
-    // Search forward for closing tag
-    let tagStart: Position | null = null;
-    for (let i = searchStartLine; i <= searchEndLine; i++) {
-      const line = document.lineAt(i).text;
-      const startChar = i === searchStartLine ? tag.tagRange.end.character : 0;
+    const searchStartOffset = document.offsetAt(tag.tagRange.end);
+    const searchEndOffset = document.offsetAt(
+      new Position(searchEndLine, document.lineAt(searchEndLine).text.length)
+    );
+    const candidateTags = scanTags(document, searchStartOffset, searchEndOffset);
+    let nestingLevel = 0;
 
-      for (let j = startChar; j < line.length; j++) {
-        if (line[j] === "<") {
-          tagStart = new Position(i, j);
-          currentTagName = "";
-          parsingName = true;
-        } else if (line[j] === ">") {
-          if (currentTagName === "/" + tag.tagName) {
-            if (nestingLevel === 0) {
-              return {
-                tagName: tag.tagName,
-                tagType: "closing",
-                tagRange: new Range(tagStart!, new Position(i, j + 1)),
-              };
-            }
-            nestingLevel--;
-          } else if (currentTagName === tag.tagName) {
-            nestingLevel++;
-          }
-          currentTagName = "";
-        } else if (parsingName) {
-          const char = line[j];
-          // check if char is a valid tag name character
-          if (char.match(/[^> \t\n]/)) {
-            currentTagName += char;
-          } else {
-            parsingName = false;
-          }
-        }
+    for (const candidateTag of candidateTags) {
+      if (candidateTag.tagName !== tag.tagName || candidateTag.tagType === "selfClosing") {
+        continue;
       }
+
+      if (candidateTag.tagType === "opening") {
+        nestingLevel++;
+        continue;
+      }
+
+      if (nestingLevel === 0) {
+        return candidateTag;
+      }
+
+      nestingLevel--;
     }
   } else {
-    // Search backward for opening tag
-    let tagEnd: Position | null = null;
-    for (let i = searchStartLine; i >= searchEndLine; i--) {
-      const line = document.lineAt(i).text;
-      const startChar = i === searchStartLine ? tag.tagRange.start.character - 1 : line.length - 1;
+    const searchStartOffset = document.offsetAt(new Position(searchEndLine, 0));
+    const searchEndOffset = document.offsetAt(tag.tagRange.start);
+    const candidateTags = scanTags(document, searchStartOffset, searchEndOffset);
+    let nestingLevel = 0;
 
-      for (let j = startChar; j >= 0; j--) {
-        if (line[j] === ">") {
-          tagEnd = new Position(i, j + 1);
-        } else if (line[j] === "<") {
-          currentTagName = line.substring(j).match(/<([^> \t\n]+)/)?.[1] ?? "";
-          if (currentTagName === tag.tagName) {
-            if (nestingLevel === 0) {
-              return {
-                tagName: tag.tagName,
-                tagType: "opening",
-                tagRange: new Range(new Position(i, j), tagEnd!),
-              };
-            }
-            nestingLevel--;
-          } else if (currentTagName === "/" + tag.tagName) {
-            nestingLevel++;
-          }
-        }
+    for (let i = candidateTags.length - 1; i >= 0; i--) {
+      const candidateTag = candidateTags[i];
+      if (candidateTag.tagName !== tag.tagName || candidateTag.tagType === "selfClosing") {
+        continue;
       }
+
+      if (candidateTag.tagType === "closing") {
+        nestingLevel++;
+        continue;
+      }
+
+      if (nestingLevel === 0) {
+        return candidateTag;
+      }
+
+      nestingLevel--;
     }
   }
 
@@ -338,30 +365,7 @@ export async function deleteTag(
 }
 
 export function getAllTagsInSelection(document: TextDocument, selection: Range | Selection): Tag[] {
-  const text = document.getText(selection);
-  const tags: Tag[] = [];
-  let match;
-  const tagRegex = /<\/?([^> \t\n]*)(?:\s+[^>]*)?>/g;
-
-  while ((match = tagRegex.exec(text)) !== null) {
-    const startPos = document.positionAt(document.offsetAt(selection.start) + match.index);
-    const endPos = document.positionAt(
-      document.offsetAt(selection.start) + match.index + match[0].length
-    );
-    const tagType: TagType = match[0].startsWith("</")
-      ? "closing"
-      : match[0].endsWith("/>")
-      ? "selfClosing"
-      : "opening";
-
-    tags.push({
-      tagName: match[1],
-      tagType: tagType,
-      tagRange: new Range(startPos, endPos),
-    });
-  }
-
-  return tags;
+  return scanTags(document, document.offsetAt(selection.start), document.offsetAt(selection.end));
 }
 
 type PositionType = "endOfName" | "endOfClassList";

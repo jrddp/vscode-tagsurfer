@@ -17,13 +17,18 @@ export async function surroundWithTag() {
   const document = editor.document;
   const selections = editor.selections;
 
-  let newSelections: vscode.Selection[] = [];
+  const pendingEdits: {
+    index: number;
+    startOffset: number;
+    endOffset: number;
+    newContent: string;
+    cursorOffset: number;
+  }[] = [];
 
   await editor.edit(
     editBuilder => {
       selections.forEach((selection, index) => {
         let adjustedSelection = selection;
-        const startPos = selection.start;
 
         // adjust selections with trailing cursor on next line (happens when selecting with mouse)
         if (selection.start.line !== selection.end.line && selection.end.character === 0) {
@@ -41,39 +46,53 @@ export async function surroundWithTag() {
         const selectedText = document.getText(selectionRange);
 
         let newContent: string;
-        let newPosition: vscode.Position;
+        let cursorOffset: number;
 
         switch (selectionType) {
           case "inline":
           case "multiInline":
             newContent = wrapContent(editor, tagName, selectedText, true);
-            newPosition = new vscode.Position(startPos.line, startPos.character + 1);
+            cursorOffset = 1;
             break;
           case "multiFullLine":
           case "fullLine":
             newContent = wrapContent(editor, tagName, selectedText, false);
             const lenFirstLine = newContent.split("\n")[0].length;
-            newPosition = new vscode.Position(startPos.line, lenFirstLine - tagName.length - 1);
+            cursorOffset = lenFirstLine - tagName.length - 1;
             break;
           case "none":
             newContent = wrapContent(editor, tagName, "", true);
-            newPosition = new vscode.Position(
-              startPos.line,
-              startPos.character + tagName.length + 2
-            );
+            cursorOffset = tagName.length + 2;
             break;
         }
 
         editBuilder.replace(selectionRange, newContent);
-
-        // Store the new selection
-        newSelections.push(new vscode.Selection(newPosition, newPosition));
+        pendingEdits.push({
+          index,
+          startOffset: document.offsetAt(selectionRange.start),
+          endOffset: document.offsetAt(selectionRange.end),
+          newContent,
+          cursorOffset,
+        });
       });
     },
     { undoStopBefore: false, undoStopAfter: true }
   );
 
-  // Set all new selections at once
+  const newSelections: vscode.Selection[] = new Array(pendingEdits.length);
+  let delta = 0;
+
+  const orderedEdits = [...pendingEdits].sort((a, b) =>
+    a.startOffset === b.startOffset ? a.index - b.index : a.startOffset - b.startOffset
+  );
+
+  for (const pendingEdit of orderedEdits) {
+    const transformedStartOffset = pendingEdit.startOffset + delta;
+    const newPosition = editor.document.positionAt(transformedStartOffset + pendingEdit.cursorOffset);
+    newSelections[pendingEdit.index] = new vscode.Selection(newPosition, newPosition);
+    delta += pendingEdit.newContent.length - (pendingEdit.endOffset - pendingEdit.startOffset);
+  }
+
   editor.selections = newSelections;
 
   // Force exit from Vim visual mode to normal mode

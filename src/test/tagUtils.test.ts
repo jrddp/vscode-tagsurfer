@@ -595,6 +595,18 @@ suite("getAllTagsInSelection Test Suite", () => {
     });
   });
 
+  test("Compact self-closing tag", async () => {
+    const doc = await createTestDocument("<div><br/></div>");
+    const selection = new vscode.Range(0, 0, 0, 16);
+    const result = getAllTagsInSelection(doc, selection);
+    assert.strictEqual(result.length, 3);
+    assert.deepStrictEqual(result[1], {
+      tagName: "br",
+      tagType: "selfClosing",
+      tagRange: new vscode.Range(0, 5, 0, 10),
+    });
+  });
+
   test("Tag with attributes", async () => {
     const doc = await createTestDocument('<div class="test" id="main">content</div>');
     const selection = new vscode.Range(0, 0, 0, 41);
@@ -640,7 +652,7 @@ suite("getAllTagsInSelection Test Suite", () => {
 
   test("Comment within selection", async () => {
     const doc = await createTestDocument("<div><!-- <span> -->content</div>");
-    const selection = new vscode.Range(0, 0, 0, 32);
+    const selection = new vscode.Range(0, 0, 0, 33);
     const result = getAllTagsInSelection(doc, selection);
     assert.strictEqual(result.length, 2);
     assert.deepStrictEqual(result[0], {
