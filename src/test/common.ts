@@ -25,6 +25,7 @@ export async function showTestEditor(
 
 export async function flushEditorUpdates(): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, 0));
+  await new Promise(resolve => setImmediate(resolve));
 }
 
 export async function withTagSurferSetting<T>(

@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { asBracketLoc, findPairedBracketPos } from "./bracketUtils";
 
 type Direction = "next" | "previous";
 
@@ -382,7 +383,27 @@ function findSiblingTarget(
   return siblings[(currentIndex + delta + siblings.length) % siblings.length] ?? null;
 }
 
+function findOnlySiblingMatchingPairTarget(
+  document: vscode.TextDocument,
+  offset: number
+): number | null {
+  const text = document.getText();
+  const character = text[offset];
+  if (!character) {
+    return null;
+  }
+
+  const bracketLoc = asBracketLoc(character, document.positionAt(offset));
+  if (!bracketLoc) {
+    return null;
+  }
+
+  const pairedPosition = findPairedBracketPos(document, bracketLoc);
+  return pairedPosition ? document.offsetAt(pairedPosition) : null;
+}
+
 function findSiblingPositionTarget(
+  document: vscode.TextDocument,
   tree: JsonNavigationTree,
   offset: number,
   direction: Direction
@@ -393,6 +414,13 @@ function findSiblingPositionTarget(
       return null;
     }
 
+    if (tree.roots.length === 1) {
+      const matchingPairTarget = findOnlySiblingMatchingPairTarget(document, offset);
+      if (matchingPairTarget !== null) {
+        return matchingPairTarget;
+      }
+    }
+
     const adjacentRoot =
       findAdjacentNode(tree.roots, offset, direction) ??
       (direction === "next" ? tree.roots[0] : tree.roots[tree.roots.length - 1]);
@@ -400,6 +428,13 @@ function findSiblingPositionTarget(
   }
 
   if (currentNode.children.length > 0 && offset >= currentNode.children[0].startOffset) {
+    if (currentNode.children.length === 1) {
+      const matchingPairTarget = findOnlySiblingMatchingPairTarget(document, offset);
+      if (matchingPairTarget !== null) {
+        return matchingPairTarget;
+      }
+    }
+
     const childTarget = findAdjacentNode(currentNode.children, offset, direction);
     if (childTarget) {
       return childTarget.anchorOffset;
@@ -414,7 +449,19 @@ function findSiblingPositionTarget(
 
   const siblings = currentNode.parent?.children ?? tree.roots;
   const currentIndex = siblings.indexOf(currentNode);
-  return findSiblingTarget(siblings, currentIndex, direction)?.anchorOffset ?? null;
+  const siblingTarget = findSiblingTarget(siblings, currentIndex, direction);
+  if (siblingTarget) {
+    return siblingTarget.anchorOffset;
+  }
+
+  if (siblings.length === 1) {
+    const matchingPairTarget = findOnlySiblingMatchingPairTarget(document, offset);
+    if (matchingPairTarget !== null) {
+      return matchingPairTarget;
+    }
+  }
+
+  return null;
 }
 
 function findChildPositionTarget(tree: JsonNavigationTree, offset: number): number | null {
@@ -470,7 +517,12 @@ export function findJsonSiblingPositions(
   return {
     hasSymbols: true,
     positions: selections.map(selection => {
-      const targetOffset = findSiblingPositionTarget(tree, document.offsetAt(selection.active), direction);
+      const targetOffset = findSiblingPositionTarget(
+        document,
+        tree,
+        document.offsetAt(selection.active),
+        direction
+      );
       return targetOffset === null ? null : document.positionAt(targetOffset);
     }),
   };

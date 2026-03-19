@@ -406,6 +406,74 @@ suite("Command Regression Test Suite", () => {
     assert.deepStrictEqual(editor.selection.active, new vscode.Position(1, 2));
   });
 
+  test("jumpToNextSiblingSymbol follows matching-pair behavior for an only-child JSON object value", async () => {
+    const editor = await showTestEditor(
+      [
+        "{",
+        '  "config": {',
+        '    "enabled": true',
+        "  }",
+        "}",
+      ].join("\n"),
+      "json"
+    );
+    editor.selection = new vscode.Selection(
+      positionAtText(editor.document, "{", 1),
+      positionAtText(editor.document, "{", 1)
+    );
+    await flushEditorUpdates();
+
+    await jumpToNextSiblingSymbol();
+
+    assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "}", 0));
+  });
+
+  test("jumpToPreviousSiblingSymbol follows matching-pair behavior for an only-child JSON object value", async () => {
+    const editor = await showTestEditor(
+      [
+        "{",
+        '  "config": {',
+        '    "enabled": true',
+        "  }",
+        "}",
+      ].join("\n"),
+      "json"
+    );
+    editor.selection = new vscode.Selection(
+      positionAtText(editor.document, "}", 0),
+      positionAtText(editor.document, "}", 0)
+    );
+    await flushEditorUpdates();
+
+    await jumpToPreviousSiblingSymbol();
+
+    assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "{", 1));
+  });
+
+  test("jumpToNextSiblingSymbol follows matching-pair behavior for an only-child JSON array item", async () => {
+    const editor = await showTestEditor(
+      [
+        "{",
+        '  "items": [',
+        "    {",
+        '      "id": 1',
+        "    }",
+        "  ]",
+        "}",
+      ].join("\n"),
+      "json"
+    );
+    editor.selection = new vscode.Selection(
+      positionAtText(editor.document, "{", 1),
+      positionAtText(editor.document, "{", 1)
+    );
+    await flushEditorUpdates();
+
+    await jumpToNextSiblingSymbol();
+
+    assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "}", 0));
+  });
+
   test("jumpToNextSiblingSymbol can move from parent body whitespace to the next child symbol", async () => {
     const editor = await showTestEditor(
       [
