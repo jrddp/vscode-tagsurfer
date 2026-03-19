@@ -5,6 +5,12 @@ import { insertSelfClosingTag } from "./commands/insertSelfClosingTag";
 import { deleteSurroundingTagPair } from "./commands/deleteSurroundingTagPair";
 import { deleteSelectionWithMatchingPairs } from "./commands/deleteSelectionWithPairs";
 import { focusClassName } from "./commands/focusClassName";
+import {
+  jumpToChildSymbol,
+  jumpToNextSiblingSymbol,
+  jumpToParentSymbol,
+  jumpToPreviousSiblingSymbol,
+} from "./commands/jumpToSiblingSymbol";
 
 export function activate(context: vscode.ExtensionContext) {
   let surroundDisposable = vscode.commands.registerCommand(
@@ -31,6 +37,22 @@ export function activate(context: vscode.ExtensionContext) {
     "tagSurfer.focusClassName",
     focusClassName
   );
+  let nextSiblingDisposable = vscode.commands.registerCommand(
+    "tagSurfer.jumpToNextSiblingSymbol",
+    jumpToNextSiblingSymbol
+  );
+  let previousSiblingDisposable = vscode.commands.registerCommand(
+    "tagSurfer.jumpToPreviousSiblingSymbol",
+    jumpToPreviousSiblingSymbol
+  );
+  let parentSymbolDisposable = vscode.commands.registerCommand(
+    "tagSurfer.jumpToParentSymbol",
+    jumpToParentSymbol
+  );
+  let childSymbolDisposable = vscode.commands.registerCommand(
+    "tagSurfer.jumpToChildSymbol",
+    jumpToChildSymbol
+  );
 
   context.subscriptions.push(
     surroundDisposable,
@@ -38,7 +60,11 @@ export function activate(context: vscode.ExtensionContext) {
     selfClosingDisposable,
     deleteSurroundingDisposable,
     deleteWithPairsDisposable,
-    findClassNameDisposable
+    findClassNameDisposable,
+    nextSiblingDisposable,
+    previousSiblingDisposable,
+    parentSymbolDisposable,
+    childSymbolDisposable
   );
 }
 

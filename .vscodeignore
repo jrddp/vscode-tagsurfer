@@ -3,9 +3,13 @@
 out/**
 node_modules/**
 src/**
+playground/**
+scripts/**
 .gitignore
+.git
 .yarnrc
 esbuild.js
+pnpm-lock.yaml
 vsc-extension-quickstart.md
 **/tsconfig.json
 **/.eslintrc.json

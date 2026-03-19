@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TagSurfer Playground Dashboard</title>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <nav class="breadcrumbs">
+          <ol>
+            <li><a href="/">Home</a></li>
+            <li><a href="/workspaces">Workspaces</a></li>
+            <li><span>Dashboard</span></li>
+          </ol>
+        </nav>
+        <section class="actions">
+          <button type="button">Refresh</button>
+          <button type="button">Export</button>
+        </section>
+      </header>
+
+      <main class="layout">
+        <aside class="sidebar">
+          <section class="panel">
+            <h2>Navigation</h2>
+            <ul>
+              <li><a href="#summary">Summary</a></li>
+              <li><a href="#activity">Activity</a></li>
+              <li><a href="#settings">Settings</a></li>
+            </ul>
+          </section>
+          <section class="panel">
+            <h2>Tags</h2>
+            <ul>
+              <li><span>alpha</span></li>
+              <li><span>beta</span></li>
+              <li><span>gamma</span></li>
+            </ul>
+          </section>
+        </aside>
+
+        <section class="content">
+          <article id="summary" class="card">
+            <header>
+              <h1>Workspace Summary</h1>
+              <p>Heavily nested markup for navigation and matching-pair testing.</p>
+            </header>
+
+            <section class="grid">
+              <div class="metric">
+                <h2>Symbols</h2>
+                <p>184</p>
+              </div>
+              <div class="metric">
+                <h2>Files</h2>
+                <p>27</p>
+              </div>
+              <div class="metric">
+                <h2>Warnings</h2>
+                <p>3</p>
+              </div>
+            </section>
+          </article>
+
+          <article id="activity" class="card">
+            <header>
+              <h2>Recent Activity</h2>
+            </header>
+            <table>
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Action</th>
+                  <th>Document</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>jard</td>
+                  <td>jump child</td>
+                  <td>nested.ts</td>
+                </tr>
+                <tr>
+                  <td>riley</td>
+                  <td>swap siblings</td>
+                  <td>dashboard.html</td>
+                </tr>
+                <tr>
+                  <td>alex</td>
+                  <td>delete pair</td>
+                  <td>Widget.svelte</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article id="settings" class="card">
+            <header>
+              <h2>Settings</h2>
+            </header>
+            <form>
+              <fieldset>
+                <legend>Behavior</legend>
+                <label>
+                  <span>Wrap navigation</span>
+                  <input type="checkbox" checked />
+                </label>
+                <label>
+                  <span>Prefer first child</span>
+                  <input type="checkbox" checked />
+                </label>
+              </fieldset>
+              <fieldset>
+                <legend>Export</legend>
+                <label>
+                  <span>Format</span>
+                  <select>
+                    <option>json</option>
+                    <option>html</option>
+                    <option>markdown</option>
+                  </select>
+                </label>
+              </fieldset>
+            </form>
+          </article>
+        </section>
+      </main>
+
+      <dialog open>
+        <form method="dialog">
+          <header>
+            <h2>Quick Note</h2>
+          </header>
+          <p>Use this file to test deeply nested HTML matching and tag-based navigation.</p>
+          <menu>
+            <button value="cancel">Cancel</button>
+            <button value="confirm">Confirm</button>
+          </menu>
+        </form>
+      </dialog>
+    </div>
+  </body>
+</html>

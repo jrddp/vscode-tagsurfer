@@ -40,6 +40,22 @@
       {
         "command": "tagSurfer.focusClassName",
         "title": "TagSurfer: Focus className"
+      },
+      {
+        "command": "tagSurfer.jumpToNextSiblingSymbol",
+        "title": "TagSurfer: Jump to Next Sibling"
+      },
+      {
+        "command": "tagSurfer.jumpToPreviousSiblingSymbol",
+        "title": "TagSurfer: Jump to Previous Sibling"
+      },
+      {
+        "command": "tagSurfer.jumpToParentSymbol",
+        "title": "TagSurfer: Jump to Parent"
+      },
+      {
+        "command": "tagSurfer.jumpToChildSymbol",
+        "title": "TagSurfer: Jump to Child"
       }
     ],
     "configuration": {
