@@ -13,7 +13,6 @@ export async function jumpToNextSiblingSymbol(): Promise<void> {
     kind: "sibling",
     direction: "next",
     emptyMessage: "No navigable document symbols found.",
-    missingMessage: "No next sibling symbol found.",
   });
 }
 
@@ -22,7 +21,6 @@ export async function jumpToPreviousSiblingSymbol(): Promise<void> {
     kind: "sibling",
     direction: "previous",
     emptyMessage: "No navigable document symbols found.",
-    missingMessage: "No previous sibling symbol found.",
   });
 }
 
@@ -43,7 +41,6 @@ type SymbolJumpRequest =
       kind: "sibling";
       direction: Direction;
       emptyMessage: string;
-      missingMessage: string;
     }
   | {
       kind: "parent" | "child";
@@ -83,9 +80,6 @@ async function jumpToSymbol(request: SymbolJumpRequest): Promise<void> {
   });
 
   if (!moved) {
-    if (request.kind === "sibling") {
-      vscode.window.showInformationMessage(request.missingMessage);
-    }
     return;
   }
 

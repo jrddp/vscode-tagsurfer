@@ -1,5 +1,10 @@
 import * as vscode from "vscode";
 
+import {
+  findJsonChildPositions,
+  findJsonParentPositions,
+  findJsonSiblingPositions,
+} from "./jsonNavigationUtils";
 import { findPairedTag, getEnclosingTag, type Tag } from "./tagUtils";
 
 type Direction = "next" | "previous";
@@ -313,6 +318,11 @@ export async function findSiblingSymbolPositions(
   selections: readonly vscode.Selection[],
   direction: Direction
 ): Promise<{ hasSymbols: boolean; positions: (vscode.Position | null)[] }> {
+  const jsonResult = findJsonSiblingPositions(document, selections, direction);
+  if (jsonResult) {
+    return jsonResult;
+  }
+
   const roots = await getNavigableSymbols(document);
   if (roots.length === 0) {
     return {
@@ -333,6 +343,11 @@ export async function findParentSymbolPositions(
   document: vscode.TextDocument,
   selections: readonly vscode.Selection[]
 ): Promise<{ hasSymbols: boolean; positions: (vscode.Position | null)[] }> {
+  const jsonResult = findJsonParentPositions(document, selections);
+  if (jsonResult) {
+    return jsonResult;
+  }
+
   const roots = await getNavigableSymbols(document);
   if (roots.length === 0) {
     return {
@@ -351,6 +366,11 @@ export async function findChildSymbolPositions(
   document: vscode.TextDocument,
   selections: readonly vscode.Selection[]
 ): Promise<{ hasSymbols: boolean; positions: (vscode.Position | null)[] }> {
+  const jsonResult = findJsonChildPositions(document, selections);
+  if (jsonResult) {
+    return jsonResult;
+  }
+
   const roots = await getNavigableSymbols(document);
   if (roots.length === 0) {
     return {

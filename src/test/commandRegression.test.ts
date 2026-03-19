@@ -12,6 +12,28 @@ import {
 import { surroundWithTag } from "../commands/surroundWithTag";
 import { flushEditorUpdates, showTestEditor } from "./common";
 
+function nthIndexOf(text: string, needle: string, occurrence = 0): number {
+  let searchStart = 0;
+  let index = -1;
+
+  for (let i = 0; i <= occurrence; i++) {
+    index = text.indexOf(needle, searchStart);
+    assert.notStrictEqual(index, -1, `Unable to find '${needle}' occurrence ${occurrence}.`);
+    searchStart = index + needle.length;
+  }
+
+  return index;
+}
+
+function positionAtText(
+  document: vscode.TextDocument,
+  needle: string,
+  occurrence = 0,
+  offset = 0
+): vscode.Position {
+  return document.positionAt(nthIndexOf(document.getText(), needle, occurrence) + offset);
+}
+
 suite("Command Regression Test Suite", () => {
   test("surroundWithTag keeps same-line multi-cursor selections aligned", async () => {
     const editor = await showTestEditor("one two");
@@ -215,6 +237,152 @@ suite("Command Regression Test Suite", () => {
     await jumpToPreviousSiblingSymbol();
 
     assert.deepStrictEqual(editor.selection.active, new vscode.Position(4, 9));
+  });
+
+  test("jumpToNextSiblingSymbol moves between scalar JSON object keys", async () => {
+    const editor = await showTestEditor(
+      [
+        "{",
+        '  "type": "object",',
+        '  "$id": "Item.json",',
+        '  "title": "Item",',
+        '  "hytale": {',
+        '    "type": "object",',
+        '    "internalKeys": [',
+        '      "Unknown"',
+        "    ],",
+        '    "path": "Item/Items"',
+        "  }",
+        "}",
+      ].join("\n"),
+      "json"
+    );
+    editor.selection = new vscode.Selection(
+      positionAtText(editor.document, '"type"', 0),
+      positionAtText(editor.document, '"type"', 0)
+    );
+    await flushEditorUpdates();
+
+    await jumpToNextSiblingSymbol();
+
+    assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, '"$id"'));
+  });
+
+  test("jumpToPreviousSiblingSymbol moves backward between scalar JSON object keys", async () => {
+    const editor = await showTestEditor(
+      [
+        "{",
+        '  "type": "object",',
+        '  "$id": "Item.json",',
+        '  "title": "Item",',
+        '  "hytale": {',
+        '    "type": "object",',
+        '    "internalKeys": [',
+        '      "Unknown"',
+        "    ],",
+        '    "path": "Item/Items"',
+        "  }",
+        "}",
+      ].join("\n"),
+      "json"
+    );
+    editor.selection = new vscode.Selection(
+      positionAtText(editor.document, '"$id"'),
+      positionAtText(editor.document, '"$id"')
+    );
+    await flushEditorUpdates();
+
+    await jumpToPreviousSiblingSymbol();
+
+    assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, '"type"', 0));
+  });
+
+  test("jumpToChildSymbol enters the first property of a JSON object value", async () => {
+    const editor = await showTestEditor(
+      [
+        "{",
+        '  "type": "object",',
+        '  "$id": "Item.json",',
+        '  "title": "Item",',
+        '  "hytale": {',
+        '    "type": "object",',
+        '    "internalKeys": [',
+        '      "Unknown"',
+        "    ],",
+        '    "path": "Item/Items"',
+        "  }",
+        "}",
+      ].join("\n"),
+      "json"
+    );
+    editor.selection = new vscode.Selection(
+      positionAtText(editor.document, '"hytale"'),
+      positionAtText(editor.document, '"hytale"')
+    );
+    await flushEditorUpdates();
+
+    await jumpToChildSymbol();
+
+    assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, '"type"', 1));
+  });
+
+  test("jumpToParentSymbol moves from a nested JSON array item to its containing property", async () => {
+    const editor = await showTestEditor(
+      [
+        "{",
+        '  "type": "object",',
+        '  "$id": "Item.json",',
+        '  "title": "Item",',
+        '  "hytale": {',
+        '    "type": "object",',
+        '    "internalKeys": [',
+        '      "Unknown"',
+        "    ],",
+        '    "path": "Item/Items",',
+        '    "extension": ".json"',
+        "  }",
+        "}",
+      ].join("\n"),
+      "json"
+    );
+    editor.selection = new vscode.Selection(
+      positionAtText(editor.document, '"Unknown"'),
+      positionAtText(editor.document, '"Unknown"')
+    );
+    await flushEditorUpdates();
+
+    await jumpToParentSymbol();
+
+    assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, '"internalKeys"'));
+  });
+
+  test("jumpToNextSiblingSymbol moves between nested scalar JSON object keys", async () => {
+    const editor = await showTestEditor(
+      [
+        "{",
+        '  "type": "object",',
+        '  "$id": "Item.json",',
+        '  "title": "Item",',
+        '  "hytale": {',
+        '    "type": "object",',
+        '    "internalKeys": [',
+        '      "Unknown"',
+        "    ],",
+        '    "path": "Item/Items"',
+        "  }",
+        "}",
+      ].join("\n"),
+      "json"
+    );
+    editor.selection = new vscode.Selection(
+      positionAtText(editor.document, '"type"', 1),
+      positionAtText(editor.document, '"type"', 1)
+    );
+    await flushEditorUpdates();
+
+    await jumpToNextSiblingSymbol();
+
+    assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, '"internalKeys"'));
   });
 
   test("jumpToNextSiblingSymbol toggles between header and end when there is only one sibling", async () => {
