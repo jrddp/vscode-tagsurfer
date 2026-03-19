@@ -185,6 +185,83 @@ suite("Command Coverage Test Suite", () => {
       assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "<span>", 1));
     });
 
+    test("wraps the surrounding tag when the cursor is inside an opening tag definition", async () => {
+      const editor = await showTestEditor("<div></div>");
+      editor.selection = cursor(0, 2);
+
+      await surroundWithTag();
+      await flushEditorUpdates();
+
+      assert.strictEqual(editor.document.getText(), "<span><div></div></span>");
+      assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "<span>", 1));
+    });
+
+    test("wraps the surrounding tag when the cursor is inside a closing tag definition", async () => {
+      const editor = await showTestEditor("<div></div>");
+      editor.selection = cursor(0, 8);
+
+      await surroundWithTag();
+      await flushEditorUpdates();
+
+      assert.strictEqual(editor.document.getText(), "<span><div></div></span>");
+      assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "<span>", 1));
+    });
+
+    test("wraps self-closing tags instead of the tag name text", async () => {
+      const editor = await showTestEditor("<img />");
+      editor.selection = cursor(0, 2);
+
+      await surroundWithTag();
+      await flushEditorUpdates();
+
+      assert.strictEqual(editor.document.getText(), "<span><img /></span>");
+      assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "<span>", 1));
+    });
+
+    test("wraps multiline tags as block selections when the cursor is inside the tag definition", async () => {
+      await withTagSurferSetting("defaultBlockTag", "section", async () => {
+        const editor = await showTestEditor("<div>\n  alpha\n</div>\nomega");
+        editor.options = { insertSpaces: true, tabSize: 2 };
+        editor.selection = cursor(0, 2);
+
+        await surroundWithTag();
+        await flushEditorUpdates();
+
+        assert.strictEqual(
+          editor.document.getText(),
+          "<section>\n  <div>\n    alpha\n  </div>\n</section>\nomega"
+        );
+        assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "<section>", 1));
+      });
+    });
+
+    test("wraps indented multiline tags as block selections when the cursor is inside the tag definition", async () => {
+      const editor = await showTestEditor(
+        [
+          "          <div class=\"flex-1\">",
+          "            <p>alpha</p>",
+          "          </div>",
+        ].join("\n")
+      );
+      editor.options = { insertSpaces: true, tabSize: 2 };
+      editor.selection = cursor(0, 12);
+
+      await surroundWithTag();
+      await flushEditorUpdates();
+
+      assert.strictEqual(
+        editor.document.getText(),
+        [
+          "          <div>",
+          "            <div class=\"flex-1\">",
+          "              <p>alpha</p>",
+          "            </div>",
+          "          </div>",
+        ].join("\n")
+      );
+      assert.deepStrictEqual(editor.selection.active, new vscode.Position(0, 11));
+    });
+
     test("keeps empty block insertion behavior on whitespace and leaves the cursor on the opening tag name", async () => {
       const editor = await showTestEditor("hello world");
       editor.selection = cursor(0, 5);

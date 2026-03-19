@@ -1,7 +1,40 @@
 import * as vscode from "vscode";
 import { getSelectionType } from "../utils/selectionUtils";
-import { wrapContent } from "../utils/tagUtils";
+import { findPairedTag, getEnclosingTag, wrapContent } from "../utils/tagUtils";
 import { getSetting } from "../config";
+
+function getTagRangeUnderCursor(
+  document: vscode.TextDocument,
+  position: vscode.Position
+): vscode.Range | null {
+  const tag = getEnclosingTag(document, position);
+  if (!tag) {
+    return null;
+  }
+
+  if (tag.tagType === "selfClosing") {
+    return tag.tagRange;
+  }
+
+  const pairedTag = findPairedTag(document, tag);
+  if (!pairedTag) {
+    return tag.tagRange;
+  }
+
+  const openingTag = tag.tagType === "closing" ? pairedTag : tag;
+  const closingTag = tag.tagType === "closing" ? tag : pairedTag;
+  let rangeStart = openingTag.tagRange.start;
+  if (openingTag.tagRange.start.line !== closingTag.tagRange.end.line) {
+    const linePrefix = document
+      .lineAt(openingTag.tagRange.start.line)
+      .text.slice(0, openingTag.tagRange.start.character);
+    if (linePrefix.trim() === "") {
+      rangeStart = new vscode.Position(openingTag.tagRange.start.line, 0);
+    }
+  }
+
+  return new vscode.Range(rangeStart, closingTag.tagRange.end);
+}
 
 function getWordRangeUnderCursor(
   document: vscode.TextDocument,
@@ -51,10 +84,17 @@ export async function surroundWithTag() {
     editBuilder => {
       selections.forEach((selection, index) => {
         let adjustedSelection = selection;
+        let implicitTagWrapMode: "inline" | "block" | null = null;
         if (selection.isEmpty) {
-          const wordRange = getWordRangeUnderCursor(document, selection.active);
-          if (wordRange) {
-            adjustedSelection = new vscode.Selection(wordRange.start, wordRange.end);
+          const tagRange = getTagRangeUnderCursor(document, selection.active);
+          if (tagRange) {
+            adjustedSelection = new vscode.Selection(tagRange.start, tagRange.end);
+            implicitTagWrapMode = tagRange.start.line === tagRange.end.line ? "inline" : "block";
+          } else {
+            const wordRange = getWordRangeUnderCursor(document, selection.active);
+            if (wordRange) {
+              adjustedSelection = new vscode.Selection(wordRange.start, wordRange.end);
+            }
           }
         }
 
@@ -69,7 +109,11 @@ export async function surroundWithTag() {
         }
 
         const selectionType = getSelectionType(adjustedSelection, document);
-        const tagName = selectionType === "inline" ? inlineTag : blockTag;
+        const shouldWrapInline =
+          implicitTagWrapMode === "inline" ||
+          (implicitTagWrapMode === null &&
+            (selectionType === "inline" || selectionType === "multiInline"));
+        const tagName = shouldWrapInline ? inlineTag : blockTag;
         const selectionRange = new vscode.Range(adjustedSelection.start, adjustedSelection.end);
         const selectedText = document.getText(selectionRange);
 
@@ -79,12 +123,9 @@ export async function surroundWithTag() {
         switch (selectionType) {
           case "inline":
           case "multiInline":
-            newContent = wrapContent(editor, tagName, selectedText, true);
-            cursorOffset = getOpeningTagCursorOffset(newContent, tagName);
-            break;
           case "multiFullLine":
           case "fullLine":
-            newContent = wrapContent(editor, tagName, selectedText, false);
+            newContent = wrapContent(editor, tagName, selectedText, shouldWrapInline);
             cursorOffset = getOpeningTagCursorOffset(newContent, tagName);
             break;
           case "none":
