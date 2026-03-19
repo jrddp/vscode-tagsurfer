@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
 import { findSiblingSwapOperation, rememberSiblingSwapOperation } from "../utils/documentSymbolUtils";
+import { getActionPosition } from "../utils/positionUtils";
 
 type Direction = "next" | "previous";
 
@@ -24,7 +25,9 @@ async function swapWithSibling(direction: Direction): Promise<void> {
     return;
   }
 
-  const result = await findSiblingSwapOperation(editor.document, editor.selection, direction);
+  const actionPosition = getActionPosition(editor.document, editor.selection.active);
+  const effectiveSelection = new vscode.Selection(actionPosition, actionPosition);
+  const result = await findSiblingSwapOperation(editor.document, effectiveSelection, direction);
   if (!result.hasSymbols) {
     vscode.window.showInformationMessage("No navigable document symbols found.");
     return;

@@ -37,6 +37,79 @@ function cursor(line: number, character: number): vscode.Selection {
   return new vscode.Selection(position, position);
 }
 
+function createSvelteScriptConstantSymbols(document: vscode.TextDocument): vscode.DocumentSymbol[] {
+  return ["first", "second", "third"].map(name => {
+    const line = positionAtText(document, name).line;
+    const lineText = document.lineAt(line).text;
+    const nameStart = lineText.indexOf(name);
+
+    return new vscode.DocumentSymbol(
+      name,
+      "",
+      vscode.SymbolKind.Constant,
+      new vscode.Range(line, 2, line, lineText.length),
+      new vscode.Range(line, nameStart, line, nameStart + name.length)
+    );
+  });
+}
+
+function createMethodSymbol(
+  document: vscode.TextDocument,
+  name: string,
+  startLine: number,
+  endLine: number
+): vscode.DocumentSymbol {
+  const lineText = document.lineAt(startLine).text;
+  const nameStart = lineText.indexOf(name);
+  return new vscode.DocumentSymbol(
+    name,
+    "",
+    vscode.SymbolKind.Method,
+    new vscode.Range(startLine, 2, endLine, document.lineAt(endLine).text.length),
+    new vscode.Range(startLine, nameStart, startLine, nameStart + name.length)
+  );
+}
+
+function createClassSymbol(
+  document: vscode.TextDocument,
+  name: string,
+  startLine: number,
+  endLine: number,
+  children: vscode.DocumentSymbol[]
+): vscode.DocumentSymbol {
+  const lineText = document.lineAt(startLine).text;
+  const nameStart = lineText.indexOf(name);
+  const symbol = new vscode.DocumentSymbol(
+    name,
+    "",
+    vscode.SymbolKind.Class,
+    new vscode.Range(startLine, 0, endLine, document.lineAt(endLine).text.length),
+    new vscode.Range(startLine, nameStart, startLine, nameStart + name.length)
+  );
+  symbol.children.push(...children);
+  return symbol;
+}
+
+function createNestedSvelteClassSymbols(document: vscode.TextDocument): vscode.DocumentSymbol[] {
+  const alphaLine = positionAtText(document, "Alpha").line;
+  const betaLine = positionAtText(document, "Beta").line;
+  const oneLine = positionAtText(document, "one").line;
+  const twoLine = positionAtText(document, "two").line;
+  const redLine = positionAtText(document, "red").line;
+  const blueLine = positionAtText(document, "blue").line;
+
+  return [
+    createClassSymbol(document, "Alpha", alphaLine, alphaLine + 8, [
+      createMethodSymbol(document, "one", oneLine, oneLine + 2),
+      createMethodSymbol(document, "two", twoLine, twoLine + 2),
+    ]),
+    createClassSymbol(document, "Beta", betaLine, betaLine + 8, [
+      createMethodSymbol(document, "red", redLine, redLine + 2),
+      createMethodSymbol(document, "blue", blueLine, blueLine + 2),
+    ]),
+  ];
+}
+
 async function withCapturedWindowMessages<T>(
   run: (messages: { info: string[]; error: string[] }) => Promise<T> | T
 ): Promise<T> {
@@ -446,6 +519,7 @@ suite("Command Coverage Test Suite", () => {
       }, async () => {
         await focusClassName();
         await flushEditorUpdates();
+        await flushEditorUpdates();
       });
 
       assert.strictEqual(editor.document.getText(), '<div class=""></div>');
@@ -591,30 +665,7 @@ suite("Command Coverage Test Suite", () => {
         positionAtText(editor.document, "first"),
         positionAtText(editor.document, "first")
       );
-
-      const symbols = [
-        new vscode.DocumentSymbol(
-          "first",
-          "",
-          vscode.SymbolKind.Constant,
-          new vscode.Range(1, 2, 1, editor.document.lineAt(1).text.length),
-          new vscode.Range(1, 15, 1, 20)
-        ),
-        new vscode.DocumentSymbol(
-          "second",
-          "",
-          vscode.SymbolKind.Constant,
-          new vscode.Range(2, 2, 2, editor.document.lineAt(2).text.length),
-          new vscode.Range(2, 15, 2, 21)
-        ),
-        new vscode.DocumentSymbol(
-          "third",
-          "",
-          vscode.SymbolKind.Constant,
-          new vscode.Range(3, 2, 3, editor.document.lineAt(3).text.length),
-          new vscode.Range(3, 15, 3, 20)
-        ),
-      ];
+      const symbols = createSvelteScriptConstantSymbols(editor.document);
 
       let providerCalls = 0;
       await withMockedExecuteCommand(async command => {
@@ -632,6 +683,447 @@ suite("Command Coverage Test Suite", () => {
       assert.strictEqual(providerCalls, 1);
       assert.strictEqual(editor.document.getText(), originalText);
       assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "first"));
+    });
+
+    test("invalidates the swap cache after the cursor moves before the next swap", async () => {
+      const editor = await showTestEditor(
+        [
+          "<script lang=\"ts\">",
+          "  export const first = 1;",
+          "  export const second = 2;",
+          "  export const third = 3;",
+          "</script>",
+        ].join("\n"),
+        "svelte"
+      );
+      editor.selection = new vscode.Selection(
+        positionAtText(editor.document, "first"),
+        positionAtText(editor.document, "first")
+      );
+      const symbols = createSvelteScriptConstantSymbols(editor.document);
+
+      let providerCalls = 0;
+      await withMockedExecuteCommand(async command => {
+        if (command === "vscode.executeDocumentSymbolProvider") {
+          providerCalls += 1;
+          return symbols;
+        }
+
+        return undefined;
+      }, async () => {
+        await swapWithNextSibling();
+        editor.selection = new vscode.Selection(
+          positionAtText(editor.document, "third"),
+          positionAtText(editor.document, "third")
+        );
+        await swapWithPreviousSibling();
+      });
+
+      assert.strictEqual(providerCalls, 2);
+    });
+
+    test("reuses the symbol provider result across a longer swap chain without cursor movement", async () => {
+      const editor = await showTestEditor(
+        [
+          "<script lang=\"ts\">",
+          "  export const first = 1;",
+          "  export const second = 2;",
+          "  export const third = 3;",
+          "</script>",
+        ].join("\n"),
+        "svelte"
+      );
+      editor.selection = new vscode.Selection(
+        positionAtText(editor.document, "first"),
+        positionAtText(editor.document, "first")
+      );
+
+      let providerCalls = 0;
+      await withMockedExecuteCommand(async command => {
+        if (command === "vscode.executeDocumentSymbolProvider") {
+          providerCalls += 1;
+          return createSvelteScriptConstantSymbols(editor.document);
+        }
+
+        return undefined;
+      }, async () => {
+        await swapWithNextSibling();
+        await swapWithPreviousSibling();
+        await swapWithNextSibling();
+      });
+
+      assert.strictEqual(providerCalls, 1);
+      assert.strictEqual(
+        editor.document.getText(),
+        [
+          "<script lang=\"ts\">",
+          "  export const second = 2;",
+          "  export const first = 1;",
+          "  export const third = 3;",
+          "</script>",
+        ].join("\n")
+      );
+      assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "first"));
+    });
+
+    test("invalidates the swap cache when moving to leading indentation before the same symbol", async () => {
+      const editor = await showTestEditor(
+        [
+          "<script lang=\"ts\">",
+          "  export const first = 1;",
+          "  export const second = 2;",
+          "  export const third = 3;",
+          "</script>",
+        ].join("\n"),
+        "svelte"
+      );
+      const originalText = editor.document.getText();
+      editor.selection = new vscode.Selection(
+        positionAtText(editor.document, "first"),
+        positionAtText(editor.document, "first")
+      );
+
+      let providerCalls = 0;
+      await withMockedExecuteCommand(async command => {
+        if (command === "vscode.executeDocumentSymbolProvider") {
+          providerCalls += 1;
+          return createSvelteScriptConstantSymbols(editor.document);
+        }
+
+        return undefined;
+      }, async () => {
+        await swapWithNextSibling();
+        editor.selection = cursor(positionAtText(editor.document, "first").line, 0);
+        await swapWithPreviousSibling();
+      });
+
+      assert.strictEqual(providerCalls, 2);
+      assert.strictEqual(editor.document.getText(), originalText);
+      assert.deepStrictEqual(
+        editor.selection.active,
+        new vscode.Position(
+          positionAtText(editor.document, "first").line,
+          editor.document.lineAt(positionAtText(editor.document, "first").line).firstNonWhitespaceCharacterIndex
+        )
+      );
+    });
+
+    test("invalidates the swap cache when moving to a nested child inside the cached parent range", async () => {
+      const editor = await showTestEditor(
+        [
+          "<script lang=\"ts\">",
+          "class Alpha {",
+          "  one() {",
+          "    return 1;",
+          "  }",
+          "",
+          "  two() {",
+          "    return 2;",
+          "  }",
+          "}",
+          "",
+          "class Beta {",
+          "  red() {",
+          "    return 3;",
+          "  }",
+          "",
+          "  blue() {",
+          "    return 4;",
+          "  }",
+          "}",
+          "</script>",
+        ].join("\n"),
+        "svelte"
+      );
+      editor.selection = new vscode.Selection(
+        positionAtText(editor.document, "Alpha"),
+        positionAtText(editor.document, "Alpha")
+      );
+
+      let providerCalls = 0;
+      await withMockedExecuteCommand(async command => {
+        if (command === "vscode.executeDocumentSymbolProvider") {
+          providerCalls += 1;
+          return createNestedSvelteClassSymbols(editor.document);
+        }
+
+        return undefined;
+      }, async () => {
+        await swapWithNextSibling();
+        editor.selection = new vscode.Selection(
+          positionAtText(editor.document, "blue"),
+          positionAtText(editor.document, "blue")
+        );
+        await swapWithPreviousSibling();
+      });
+
+      assert.strictEqual(providerCalls, 2);
+      assert.strictEqual(
+        editor.document.getText(),
+        [
+          "<script lang=\"ts\">",
+          "class Beta {",
+          "  blue() {",
+          "    return 4;",
+          "  }",
+          "",
+          "  red() {",
+          "    return 3;",
+          "  }",
+          "}",
+          "",
+          "class Alpha {",
+          "  one() {",
+          "    return 1;",
+          "  }",
+          "",
+          "  two() {",
+          "    return 2;",
+          "  }",
+          "}",
+          "</script>",
+        ].join("\n")
+      );
+      assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "blue"));
+    });
+
+    test("invalidates the swap cache when moving to nested child indentation inside the cached parent range", async () => {
+      const editor = await showTestEditor(
+        [
+          "<script lang=\"ts\">",
+          "class Alpha {",
+          "  one() {",
+          "    return 1;",
+          "  }",
+          "",
+          "  two() {",
+          "    return 2;",
+          "  }",
+          "}",
+          "",
+          "class Beta {",
+          "  red() {",
+          "    return 3;",
+          "  }",
+          "",
+          "  blue() {",
+          "    return 4;",
+          "  }",
+          "}",
+          "</script>",
+        ].join("\n"),
+        "svelte"
+      );
+      editor.selection = new vscode.Selection(
+        positionAtText(editor.document, "Alpha"),
+        positionAtText(editor.document, "Alpha")
+      );
+
+      let providerCalls = 0;
+      await withMockedExecuteCommand(async command => {
+        if (command === "vscode.executeDocumentSymbolProvider") {
+          providerCalls += 1;
+          return createNestedSvelteClassSymbols(editor.document);
+        }
+
+        return undefined;
+      }, async () => {
+        await swapWithNextSibling();
+        editor.selection = cursor(positionAtText(editor.document, "blue").line, 0);
+        await swapWithPreviousSibling();
+      });
+
+      assert.strictEqual(providerCalls, 2);
+      assert.strictEqual(
+        editor.document.getText(),
+        [
+          "<script lang=\"ts\">",
+          "class Beta {",
+          "  blue() {",
+          "    return 4;",
+          "  }",
+          "",
+          "  red() {",
+          "    return 3;",
+          "  }",
+          "}",
+          "",
+          "class Alpha {",
+          "  one() {",
+          "    return 1;",
+          "  }",
+          "",
+          "  two() {",
+          "    return 2;",
+          "  }",
+          "}",
+          "</script>",
+        ].join("\n")
+      );
+      assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "blue"));
+    });
+
+    test("invalidates the swap cache when moving into a nested method body before the next swap", async () => {
+      const editor = await showTestEditor(
+        [
+          "<script lang=\"ts\">",
+          "class Alpha {",
+          "  one() {",
+          "    return 1;",
+          "  }",
+          "",
+          "  two() {",
+          "    return 2;",
+          "  }",
+          "}",
+          "",
+          "class Beta {",
+          "  red() {",
+          "    return 3;",
+          "  }",
+          "",
+          "  blue() {",
+          "    return 4;",
+          "  }",
+          "}",
+          "</script>",
+        ].join("\n"),
+        "svelte"
+      );
+      editor.selection = new vscode.Selection(
+        positionAtText(editor.document, "Alpha"),
+        positionAtText(editor.document, "Alpha")
+      );
+
+      let providerCalls = 0;
+      await withMockedExecuteCommand(async command => {
+        if (command === "vscode.executeDocumentSymbolProvider") {
+          providerCalls += 1;
+          return createNestedSvelteClassSymbols(editor.document);
+        }
+
+        return undefined;
+      }, async () => {
+        await swapWithNextSibling();
+        editor.selection = new vscode.Selection(
+          positionAtText(editor.document, "return 4;"),
+          positionAtText(editor.document, "return 4;")
+        );
+        await swapWithPreviousSibling();
+      });
+
+      assert.strictEqual(providerCalls, 2);
+      assert.strictEqual(
+        editor.document.getText(),
+        [
+          "<script lang=\"ts\">",
+          "class Beta {",
+          "  blue() {",
+          "    return 4;",
+          "  }",
+          "",
+          "  red() {",
+          "    return 3;",
+          "  }",
+          "}",
+          "",
+          "class Alpha {",
+          "  one() {",
+          "    return 1;",
+          "  }",
+          "",
+          "  two() {",
+          "    return 2;",
+          "  }",
+          "}",
+          "</script>",
+        ].join("\n")
+      );
+      assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "return 4;"));
+    });
+
+    test("invalidates the swap cache after an unrelated document edit changes the version", async () => {
+      const editor = await showTestEditor(
+        [
+          "<script lang=\"ts\">",
+          "  export const first = 1;",
+          "  export const second = 2;",
+          "  export const third = 3;",
+          "</script>",
+        ].join("\n"),
+        "svelte"
+      );
+      editor.selection = new vscode.Selection(
+        positionAtText(editor.document, "first"),
+        positionAtText(editor.document, "first")
+      );
+
+      let providerCalls = 0;
+      await withMockedExecuteCommand(async command => {
+        if (command === "vscode.executeDocumentSymbolProvider") {
+          providerCalls += 1;
+          return createSvelteScriptConstantSymbols(editor.document);
+        }
+
+        return undefined;
+      }, async () => {
+        await swapWithNextSibling();
+        await editor.edit(editBuilder => {
+          editBuilder.insert(new vscode.Position(4, editor.document.lineAt(4).text.length), " ");
+        });
+        await swapWithPreviousSibling();
+      });
+
+      assert.strictEqual(providerCalls, 2);
+    });
+
+    test("does not reuse a cached swap group across different documents", async () => {
+      const firstEditor = await showTestEditor(
+        [
+          "<script lang=\"ts\">",
+          "  export const first = 1;",
+          "  export const second = 2;",
+          "  export const third = 3;",
+          "</script>",
+        ].join("\n"),
+        "svelte"
+      );
+      firstEditor.selection = new vscode.Selection(
+        positionAtText(firstEditor.document, "first"),
+        positionAtText(firstEditor.document, "first")
+      );
+      const secondEditor = await showTestEditor(
+        [
+          "<script lang=\"ts\">",
+          "  export const first = 1;",
+          "  export const second = 2;",
+          "  export const third = 3;",
+          "</script>",
+        ].join("\n"),
+        "svelte"
+      );
+      secondEditor.selection = new vscode.Selection(
+        positionAtText(secondEditor.document, "first"),
+        positionAtText(secondEditor.document, "first")
+      );
+
+      let providerCalls = 0;
+      await withMockedExecuteCommand(async command => {
+        if (command === "vscode.executeDocumentSymbolProvider") {
+          providerCalls += 1;
+          const activeDocument = vscode.window.activeTextEditor?.document;
+          return activeDocument ? createSvelteScriptConstantSymbols(activeDocument) : undefined;
+        }
+
+        return undefined;
+      }, async () => {
+        await vscode.window.showTextDocument(firstEditor.document);
+        await swapWithNextSibling();
+        await vscode.window.showTextDocument(secondEditor.document);
+        await swapWithNextSibling();
+      });
+
+      assert.strictEqual(providerCalls, 2);
     });
   });
 });

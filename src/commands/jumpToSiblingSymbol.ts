@@ -5,6 +5,7 @@ import {
   findParentSymbolPositions,
   findSiblingSymbolPositions,
 } from "../utils/documentSymbolUtils";
+import { getActionPosition } from "../utils/positionUtils";
 
 type Direction = "next" | "previous";
 
@@ -53,12 +54,17 @@ async function jumpToSymbol(request: SymbolJumpRequest): Promise<void> {
     return;
   }
 
+  const effectiveSelections = editor.selections.map(selection => {
+    const position = getActionPosition(editor.document, selection.active);
+    return new vscode.Selection(position, position);
+  });
+
   const result =
     request.kind === "sibling"
-      ? await findSiblingSymbolPositions(editor.document, editor.selections, request.direction)
+      ? await findSiblingSymbolPositions(editor.document, effectiveSelections, request.direction)
       : request.kind === "parent"
-      ? await findParentSymbolPositions(editor.document, editor.selections)
-      : await findChildSymbolPositions(editor.document, editor.selections);
+      ? await findParentSymbolPositions(editor.document, effectiveSelections)
+      : await findChildSymbolPositions(editor.document, effectiveSelections);
   const { hasSymbols, positions } = result;
 
   if (!hasSymbols) {

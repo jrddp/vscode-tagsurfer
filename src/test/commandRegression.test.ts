@@ -198,6 +198,29 @@ suite("Command Regression Test Suite", () => {
     assert.deepStrictEqual(editor.selection.active, new vscode.Position(1, 2));
   });
 
+  test("jumpToPreviousSiblingSymbol treats leading indentation as the symbol header", async () => {
+    const editor = await showTestEditor(
+      [
+        "class Example {",
+        "  alpha() {",
+        "    return 1;",
+        "  }",
+        "",
+        "  beta() {",
+        "    return 2;",
+        "  }",
+        "}",
+      ].join("\n"),
+      "ts"
+    );
+    editor.selection = new vscode.Selection(5, 0, 5, 0);
+    await flushEditorUpdates();
+
+    await jumpToPreviousSiblingSymbol();
+
+    assert.deepStrictEqual(editor.selection.active, new vscode.Position(1, 2));
+  });
+
   test("jumpToNextSiblingSymbol wraps to the first sibling after the last one", async () => {
     const editor = await showTestEditor(
       [
@@ -747,6 +770,42 @@ suite("Command Regression Test Suite", () => {
       ].join("\n")
     );
     assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "beta()", 0, 1));
+  });
+
+  test("swapWithPreviousSibling treats leading indentation as the symbol header", async () => {
+    const editor = await showTestEditor(
+      [
+        "class Example {",
+        "  alpha() {",
+        "    return 1;",
+        "  }",
+        "",
+        "  beta() {",
+        "    return 2;",
+        "  }",
+        "}",
+      ].join("\n"),
+      "ts"
+    );
+    editor.selection = new vscode.Selection(5, 0, 5, 0);
+
+    await swapWithPreviousSibling();
+
+    assert.strictEqual(
+      editor.document.getText(),
+      [
+        "class Example {",
+        "  beta() {",
+        "    return 2;",
+        "  }",
+        "",
+        "  alpha() {",
+        "    return 1;",
+        "  }",
+        "}",
+      ].join("\n")
+    );
+    assert.deepStrictEqual(editor.selection.active, new vscode.Position(1, 2));
   });
 
   test("swapWithPreviousSibling keeps exported TypeScript declaration prefixes intact", async () => {

@@ -25,6 +25,7 @@ type CachedSwapSibling = {
 type CachedSwapGroup = {
   uri: string;
   version: number;
+  activeOffset: number;
   siblings: CachedSwapSibling[];
 };
 
@@ -35,7 +36,7 @@ type SwapCacheMetadata = {
 };
 
 type CachedSiblingSwapOperation = SiblingSwapOperation & {
-  cacheMetadata: SwapCacheMetadata;
+  cacheMetadata?: SwapCacheMetadata;
 };
 
 let cachedSwapGroup: CachedSwapGroup | null = null;
@@ -338,10 +339,6 @@ async function getNavigableSymbols(document: vscode.TextDocument): Promise<Norma
   return normalizeSymbols(asDocumentSymbols(symbols), null);
 }
 
-function containsSwapOffset(sibling: CachedSwapSibling, offset: number): boolean {
-  return offset >= sibling.startOffset && offset <= sibling.endOffset;
-}
-
 function createCachedSwapOperation(
   document: vscode.TextDocument,
   siblings: readonly CachedSwapSibling[],
@@ -384,8 +381,12 @@ function getCachedSwapOperation(
   }
 
   const currentOffset = document.offsetAt(selection.active);
-  const currentIndex = cachedSwapGroup.siblings.findIndex(sibling =>
-    containsSwapOffset(sibling, currentOffset)
+  if (currentOffset !== cachedSwapGroup.activeOffset) {
+    return null;
+  }
+
+  const currentIndex = cachedSwapGroup.siblings.findIndex(
+    sibling => currentOffset >= sibling.startOffset && currentOffset <= sibling.endOffset
   );
   if (currentIndex === -1) {
     return null;
@@ -559,6 +560,7 @@ export function rememberSiblingSwapOperation(
   cachedSwapGroup = {
     uri: document.uri.toString(),
     version: document.version,
+    activeOffset: operation.selectionOffset,
     siblings,
   };
 }
