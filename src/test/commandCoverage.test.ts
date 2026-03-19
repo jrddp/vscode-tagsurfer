@@ -303,6 +303,39 @@ suite("Command Coverage Test Suite", () => {
       assert.deepStrictEqual(editor.selection.active, new vscode.Position(0, 0));
     });
 
+    test("unindents block wrappers created by surroundWithTag", async () => {
+      const editor = await showTestEditor("<div>\n  alpha\n</div>");
+      editor.options = { insertSpaces: true, tabSize: 2 };
+      editor.selection = cursor(0, 2);
+
+      await deleteSurroundingTagPair(editor);
+
+      assert.strictEqual(editor.document.getText(), "alpha");
+      assert.deepStrictEqual(editor.selection.active, new vscode.Position(0, 0));
+    });
+
+    test("unindents indented block wrappers while preserving outer indentation", async () => {
+      const editor = await showTestEditor("  <div>\n    alpha\n  </div>");
+      editor.options = { insertSpaces: true, tabSize: 2 };
+      editor.selection = cursor(0, 4);
+
+      await deleteSurroundingTagPair(editor);
+
+      assert.strictEqual(editor.document.getText(), "  alpha");
+      assert.deepStrictEqual(editor.selection.active, new vscode.Position(0, 2));
+    });
+
+    test("unindents wrappers when the opening tag spans multiple tag-only lines", async () => {
+      const editor = await showTestEditor("  <div\n    class=\"x\"\n  >\n    alpha\n  </div>");
+      editor.options = { insertSpaces: true, tabSize: 2 };
+      editor.selection = cursor(1, 8);
+
+      await deleteSurroundingTagPair(editor);
+
+      assert.strictEqual(editor.document.getText(), "  alpha");
+      assert.deepStrictEqual(editor.selection.active, new vscode.Position(0, 2));
+    });
+
     test("removes self-closing tags", async () => {
       const editor = await showTestEditor("<div><img /></div>");
       editor.selection = cursor(0, 7);
@@ -407,6 +440,39 @@ suite("Command Coverage Test Suite", () => {
 
       assert.strictEqual(editor.document.getText(), "value");
       assert.deepStrictEqual(editor.selection.active, new vscode.Position(0, 0));
+    });
+
+    test("unindents wrapped block content when deleting an opening tag with its matching pair", async () => {
+      const editor = await showTestEditor("<div>\n  alpha\n</div>");
+      editor.options = { insertSpaces: true, tabSize: 2 };
+      editor.selection = new vscode.Selection(0, 0, 0, 5);
+
+      await deleteSelectionWithMatchingPairs();
+
+      assert.strictEqual(editor.document.getText(), "alpha");
+      assert.deepStrictEqual(editor.selection.active, new vscode.Position(0, 0));
+    });
+
+    test("preserves outer indentation when deleting an indented opening tag with its matching pair", async () => {
+      const editor = await showTestEditor("  <div>\n    alpha\n  </div>");
+      editor.options = { insertSpaces: true, tabSize: 2 };
+      editor.selection = new vscode.Selection(0, 2, 0, 7);
+
+      await deleteSelectionWithMatchingPairs();
+
+      assert.strictEqual(editor.document.getText(), "  alpha");
+      assert.deepStrictEqual(editor.selection.active, new vscode.Position(0, 2));
+    });
+
+    test("unindents wrappers when deleting a multiline opening tag with its matching pair", async () => {
+      const editor = await showTestEditor("  <div\n    class=\"x\"\n  >\n    alpha\n  </div>");
+      editor.options = { insertSpaces: true, tabSize: 2 };
+      editor.selection = new vscode.Selection(0, 2, 2, 3);
+
+      await deleteSelectionWithMatchingPairs();
+
+      assert.strictEqual(editor.document.getText(), "  alpha");
+      assert.deepStrictEqual(editor.selection.active, new vscode.Position(0, 2));
     });
 
     test("extends full-line selections to remove the line break and matching pair cleanup", async () => {

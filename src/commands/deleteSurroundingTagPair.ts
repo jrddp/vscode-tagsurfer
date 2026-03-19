@@ -1,11 +1,6 @@
 import * as vscode from "vscode";
 import { findPairedTag, getSurroundingTag, Tag } from "../utils/tagUtils";
-
-type EditOperation = {
-  startOffset: number;
-  endOffset: number;
-  replacementText: string;
-};
+import { EditOperation, getWrappedBlockDeleteOperation } from "../utils/tagDeletionUtils";
 
 function getTagEditOperations(document: vscode.TextDocument, tag: Tag): EditOperation[] {
   const operations: EditOperation[] = [];
@@ -113,10 +108,16 @@ export async function deleteSurroundingTagPair(editor: vscode.TextEditor): Promi
 
     const anchorTag =
       firstTag.tagType === "closing" && pairedTag ? pairedTag : firstTag;
-    const operations = [
-      ...getTagEditOperations(document, firstTag),
-      ...(pairedTag ? getTagEditOperations(document, pairedTag) : []),
-    ];
+    const openingTag = firstTag.tagType === "closing" && pairedTag ? pairedTag : firstTag;
+    const closingTag = firstTag.tagType === "closing" ? firstTag : pairedTag;
+    const wrappedBlockOperation =
+      pairedTag && closingTag ? getWrappedBlockDeleteOperation(editor, openingTag, closingTag) : null;
+    const operations = wrappedBlockOperation
+      ? [wrappedBlockOperation]
+      : [
+          ...getTagEditOperations(document, firstTag),
+          ...(pairedTag ? getTagEditOperations(document, pairedTag) : []),
+        ];
 
     deletePlans.push({
       index,
