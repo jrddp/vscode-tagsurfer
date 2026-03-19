@@ -23,6 +23,7 @@ export async function focusClassName(): Promise<void> {
     localOffset: number;
     insertText: string | null;
   }[] = [];
+  let shouldEnterVimInsertMode = false;
 
   editor.selections.forEach((selection, index) => {
     const cursorPos = selection.active;
@@ -47,6 +48,7 @@ export async function focusClassName(): Promise<void> {
 
     if (classNamePos.positionType === "endOfName") {
       const addString = fileType === "jsx_tsx" ? ' className=""' : ' class=""';
+      shouldEnterVimInsertMode = true;
       selectionPlans.push({
         index,
         anchorOffset,
@@ -56,6 +58,7 @@ export async function focusClassName(): Promise<void> {
       return;
     }
 
+    shouldEnterVimInsertMode = true;
     selectionPlans.push({
       index,
       anchorOffset,
@@ -93,11 +96,28 @@ export async function focusClassName(): Promise<void> {
     }
   }
 
-  editor.selections = newSelections;
+  const applySelections = () => {
+    editor.selections = newSelections;
 
-  // Reveal the primary selection (first cursor)
-  if (newSelections.length > 0) {
-    const primarySelection = newSelections[0];
-    editor.revealRange(new vscode.Range(primarySelection.start, primarySelection.end));
+    if (newSelections.length > 0) {
+      const primarySelection = newSelections[0];
+      editor.revealRange(new vscode.Range(primarySelection.start, primarySelection.end));
+    }
+  };
+
+  applySelections();
+
+  if (shouldEnterVimInsertMode) {
+    try {
+      await vscode.commands.executeCommand("extension.vim_insert");
+    } catch (error) {
+      // Continue anyways if Vim not installed or insert mode request fails
+    }
+
+    // Vim can overwrite the selection when entering insert mode, so reapply our target
+    // selection on the next tick after requesting insert mode.
+    setImmediate(() => {
+      applySelections();
+    });
   }
 }

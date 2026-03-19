@@ -429,6 +429,28 @@ suite("Command Coverage Test Suite", () => {
         [positionAtText(editor.document, 'class=""', 7, 0), positionAtText(editor.document, 'two"', 3)]
       );
     });
+
+    test("reapplies the class cursor after Vim insert runs", async () => {
+      const editor = await showTestEditor("<div></div>");
+      editor.selection = cursor(0, 2);
+
+      let vimInsertCalls = 0;
+
+      await withMockedExecuteCommand(async command => {
+        if (command === "extension.vim_insert") {
+          vimInsertCalls += 1;
+          editor.selection = cursor(0, 18);
+        }
+        return undefined;
+      }, async () => {
+        await focusClassName();
+        await flushEditorUpdates();
+      });
+
+      assert.strictEqual(editor.document.getText(), '<div class=""></div>');
+      assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, 'class=""', 7));
+      assert.strictEqual(vimInsertCalls, 1);
+    });
   });
 
   suite("deleteSelectionWithMatchingPairs", () => {
