@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import { findSiblingSwapOperation } from "../utils/documentSymbolUtils";
+import { findSiblingSwapOperation, rememberSiblingSwapOperation } from "../utils/documentSymbolUtils";
 
 type Direction = "next" | "previous";
 
@@ -36,12 +36,17 @@ async function swapWithSibling(direction: Direction): Promise<void> {
 
   const operation = result.operation;
 
-  await editor.edit(
+  const applied = await editor.edit(
     editBuilder => {
       editBuilder.replace(operation.replaceRange, operation.replacementText);
     },
     { undoStopBefore: true, undoStopAfter: true }
   );
+  if (!applied) {
+    return;
+  }
+
+  rememberSiblingSwapOperation(editor.document, operation);
 
   const newPosition = editor.document.positionAt(operation.selectionOffset);
   editor.selection = new vscode.Selection(newPosition, newPosition);

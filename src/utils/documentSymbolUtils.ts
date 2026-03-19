@@ -17,6 +17,29 @@ type NormalizedSymbol = {
   children: NormalizedSymbol[];
 };
 
+type CachedSwapSibling = {
+  startOffset: number;
+  endOffset: number;
+};
+
+type CachedSwapGroup = {
+  uri: string;
+  version: number;
+  siblings: CachedSwapSibling[];
+};
+
+type SwapCacheMetadata = {
+  siblings: CachedSwapSibling[];
+  currentIndex: number;
+  targetIndex: number;
+};
+
+type CachedSiblingSwapOperation = SiblingSwapOperation & {
+  cacheMetadata: SwapCacheMetadata;
+};
+
+let cachedSwapGroup: CachedSwapGroup | null = null;
+
 const navigableSymbolKinds = new Set<vscode.SymbolKind>([
   vscode.SymbolKind.Class,
   vscode.SymbolKind.Constant,
@@ -315,6 +338,69 @@ async function getNavigableSymbols(document: vscode.TextDocument): Promise<Norma
   return normalizeSymbols(asDocumentSymbols(symbols), null);
 }
 
+function containsSwapOffset(sibling: CachedSwapSibling, offset: number): boolean {
+  return offset >= sibling.startOffset && offset <= sibling.endOffset;
+}
+
+function createCachedSwapOperation(
+  document: vscode.TextDocument,
+  siblings: readonly CachedSwapSibling[],
+  currentIndex: number,
+  targetIndex: number,
+  currentOffset: number
+): CachedSiblingSwapOperation | null {
+  const currentSibling = siblings[currentIndex];
+  const targetSibling = siblings[targetIndex];
+  if (!currentSibling || !targetSibling) {
+    return null;
+  }
+
+  const operation = buildSiblingSwapOperation(document, currentSibling, targetSibling, currentOffset);
+  if (!operation) {
+    return null;
+  }
+
+  return {
+    ...operation,
+    cacheMetadata: {
+      siblings: siblings.map(sibling => ({ ...sibling })),
+      currentIndex,
+      targetIndex,
+    },
+  };
+}
+
+function getCachedSwapOperation(
+  document: vscode.TextDocument,
+  selection: vscode.Selection,
+  direction: Direction
+): CachedSiblingSwapOperation | null {
+  if (
+    !cachedSwapGroup ||
+    cachedSwapGroup.uri !== document.uri.toString() ||
+    cachedSwapGroup.version !== document.version
+  ) {
+    return null;
+  }
+
+  const currentOffset = document.offsetAt(selection.active);
+  const currentIndex = cachedSwapGroup.siblings.findIndex(sibling =>
+    containsSwapOffset(sibling, currentOffset)
+  );
+  if (currentIndex === -1) {
+    return null;
+  }
+
+  const targetIndex = direction === "next" ? currentIndex + 1 : currentIndex - 1;
+  return createCachedSwapOperation(
+    document,
+    cachedSwapGroup.siblings,
+    currentIndex,
+    targetIndex,
+    currentOffset
+  );
+}
+
 function getSymbolSwapRange(
   document: vscode.TextDocument,
   symbol: vscode.DocumentSymbol
@@ -380,11 +466,21 @@ export async function findSiblingSwapOperation(
 ): Promise<{ hasSymbols: boolean; operation: SiblingSwapOperation | null }> {
   const jsonResult = findJsonSiblingSwapOperation(document, selection, direction);
   if (jsonResult) {
+    cachedSwapGroup = null;
     return jsonResult;
+  }
+
+  const cachedOperation = getCachedSwapOperation(document, selection, direction);
+  if (cachedOperation) {
+    return {
+      hasSymbols: true,
+      operation: cachedOperation,
+    };
   }
 
   const roots = await getNavigableSymbols(document);
   if (roots.length === 0) {
+    cachedSwapGroup = null;
     return {
       hasSymbols: false,
       operation: null,
@@ -393,6 +489,7 @@ export async function findSiblingSwapOperation(
 
   const currentSymbol = findDeepestContainingSymbol(roots, selection.active);
   if (!currentSymbol) {
+    cachedSwapGroup = null;
     return {
       hasSymbols: true,
       operation: null,
@@ -403,20 +500,66 @@ export async function findSiblingSwapOperation(
   const currentIndex = siblings.indexOf(currentSymbol);
   const swapTarget = findSwapTarget(siblings, currentIndex, direction);
   if (!swapTarget) {
+    cachedSwapGroup = null;
     return {
       hasSymbols: true,
       operation: null,
     };
   }
 
+  const swapSiblings = siblings.map(sibling => getSymbolSwapRange(document, sibling.symbol));
+  const targetIndex = siblings.indexOf(swapTarget);
+
   return {
     hasSymbols: true,
-    operation: buildSiblingSwapOperation(
+    operation: createCachedSwapOperation(
       document,
-      getSymbolSwapRange(document, currentSymbol.symbol),
-      getSymbolSwapRange(document, swapTarget.symbol),
+      swapSiblings,
+      currentIndex,
+      targetIndex,
       document.offsetAt(selection.active)
     ),
+  };
+}
+
+export function rememberSiblingSwapOperation(
+  document: vscode.TextDocument,
+  operation: SiblingSwapOperation
+): void {
+  const cachedOperation = operation as CachedSiblingSwapOperation;
+  const cacheMetadata = cachedOperation.cacheMetadata;
+  if (!cacheMetadata) {
+    cachedSwapGroup = null;
+    return;
+  }
+
+  const siblings = cacheMetadata.siblings.map(sibling => ({ ...sibling }));
+  const leftIndex = Math.min(cacheMetadata.currentIndex, cacheMetadata.targetIndex);
+  const rightIndex = Math.max(cacheMetadata.currentIndex, cacheMetadata.targetIndex);
+  const leftSibling = siblings[leftIndex];
+  const rightSibling = siblings[rightIndex];
+  if (!leftSibling || !rightSibling) {
+    cachedSwapGroup = null;
+    return;
+  }
+
+  const gapLength = rightSibling.startOffset - leftSibling.endOffset;
+  const leftLength = leftSibling.endOffset - leftSibling.startOffset;
+  const rightLength = rightSibling.endOffset - rightSibling.startOffset;
+  const movedLeft = {
+    startOffset: leftSibling.startOffset,
+    endOffset: leftSibling.startOffset + rightLength,
+  };
+  const movedRight = {
+    startOffset: movedLeft.endOffset + gapLength,
+    endOffset: movedLeft.endOffset + gapLength + leftLength,
+  };
+
+  siblings.splice(leftIndex, 2, movedLeft, movedRight);
+  cachedSwapGroup = {
+    uri: document.uri.toString(),
+    version: document.version,
+    siblings,
   };
 }
 

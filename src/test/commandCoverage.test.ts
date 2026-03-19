@@ -7,6 +7,7 @@ import { focusClassName } from "../commands/focusClassName";
 import { insertSelfClosingTag } from "../commands/insertSelfClosingTag";
 import { jumpToMatchingPair } from "../commands/jumpToMatchingPair";
 import { surroundWithTag } from "../commands/surroundWithTag";
+import { swapWithNextSibling, swapWithPreviousSibling } from "../commands/swapWithSibling";
 import { flushEditorUpdates, showTestEditor, withTagSurferSetting } from "./common";
 
 function nthIndexOf(text: string, needle: string, occurrence = 0): number {
@@ -570,6 +571,67 @@ suite("Command Coverage Test Suite", () => {
         assert.deepStrictEqual(messages.info, []);
         assert.deepStrictEqual(messages.error, ["Unable to find matching pair for <div>."]);
       });
+    });
+  });
+
+  suite("swapWithSibling", () => {
+    test("reuses the symbol provider result across consecutive swaps in the same document", async () => {
+      const editor = await showTestEditor(
+        [
+          "<script lang=\"ts\">",
+          "  export const first = 1;",
+          "  export const second = 2;",
+          "  export const third = 3;",
+          "</script>",
+        ].join("\n"),
+        "svelte"
+      );
+      const originalText = editor.document.getText();
+      editor.selection = new vscode.Selection(
+        positionAtText(editor.document, "first"),
+        positionAtText(editor.document, "first")
+      );
+
+      const symbols = [
+        new vscode.DocumentSymbol(
+          "first",
+          "",
+          vscode.SymbolKind.Constant,
+          new vscode.Range(1, 2, 1, editor.document.lineAt(1).text.length),
+          new vscode.Range(1, 15, 1, 20)
+        ),
+        new vscode.DocumentSymbol(
+          "second",
+          "",
+          vscode.SymbolKind.Constant,
+          new vscode.Range(2, 2, 2, editor.document.lineAt(2).text.length),
+          new vscode.Range(2, 15, 2, 21)
+        ),
+        new vscode.DocumentSymbol(
+          "third",
+          "",
+          vscode.SymbolKind.Constant,
+          new vscode.Range(3, 2, 3, editor.document.lineAt(3).text.length),
+          new vscode.Range(3, 15, 3, 20)
+        ),
+      ];
+
+      let providerCalls = 0;
+      await withMockedExecuteCommand(async command => {
+        if (command === "vscode.executeDocumentSymbolProvider") {
+          providerCalls += 1;
+          return symbols;
+        }
+
+        return undefined;
+      }, async () => {
+        await swapWithNextSibling();
+        await swapWithPreviousSibling();
+      });
+
+      assert.strictEqual(providerCalls, 1);
+      assert.strictEqual(editor.document.getText(), originalText);
+      assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "first"));
     });
   });
 });
