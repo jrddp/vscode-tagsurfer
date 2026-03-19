@@ -11,6 +11,7 @@ import {
   jumpToParentSymbol,
   jumpToPreviousSiblingSymbol,
 } from "./commands/jumpToSiblingSymbol";
+import { swapWithNextSibling, swapWithPreviousSibling } from "./commands/swapWithSibling";
 
 export function activate(context: vscode.ExtensionContext) {
   let surroundDisposable = vscode.commands.registerCommand(
@@ -53,6 +54,14 @@ export function activate(context: vscode.ExtensionContext) {
     "tagSurfer.jumpToChildSymbol",
     jumpToChildSymbol
   );
+  let swapNextSiblingDisposable = vscode.commands.registerCommand(
+    "tagSurfer.swapWithNextSiblingSymbol",
+    swapWithNextSibling
+  );
+  let swapPreviousSiblingDisposable = vscode.commands.registerCommand(
+    "tagSurfer.swapWithPreviousSiblingSymbol",
+    swapWithPreviousSibling
+  );
 
   context.subscriptions.push(
     surroundDisposable,
@@ -64,7 +73,9 @@ export function activate(context: vscode.ExtensionContext) {
     nextSiblingDisposable,
     previousSiblingDisposable,
     parentSymbolDisposable,
-    childSymbolDisposable
+    childSymbolDisposable,
+    swapNextSiblingDisposable,
+    swapPreviousSiblingDisposable
   );
 }
 

@@ -9,6 +9,7 @@ import {
   jumpToParentSymbol,
   jumpToPreviousSiblingSymbol,
 } from "../commands/jumpToSiblingSymbol";
+import { swapWithNextSibling, swapWithPreviousSibling } from "../commands/swapWithSibling";
 import { surroundWithTag } from "../commands/surroundWithTag";
 import { flushEditorUpdates, showTestEditor } from "./common";
 
@@ -675,5 +676,251 @@ suite("Command Regression Test Suite", () => {
     await jumpToChildSymbol();
 
     assert.deepStrictEqual(editor.selection.active, new vscode.Position(1, 10));
+  });
+
+  test("swapWithNextSibling swaps adjacent top-level TypeScript siblings", async () => {
+    const editor = await showTestEditor(
+      [
+        "function first() {",
+        "  return 1;",
+        "}",
+        "",
+        "function second() {",
+        "  return 2;",
+        "}",
+      ].join("\n"),
+      "ts"
+    );
+    editor.selection = new vscode.Selection(1, 2, 1, 2);
+
+    await swapWithNextSibling();
+
+    assert.strictEqual(
+      editor.document.getText(),
+      [
+        "function second() {",
+        "  return 2;",
+        "}",
+        "",
+        "function first() {",
+        "  return 1;",
+        "}",
+      ].join("\n")
+    );
+    assert.deepStrictEqual(
+      editor.selection.active,
+      positionAtText(editor.document, "return 1;")
+    );
+  });
+
+  test("swapWithPreviousSibling swaps adjacent class methods", async () => {
+    const editor = await showTestEditor(
+      [
+        "class Example {",
+        "  alpha() {",
+        "    return 1;",
+        "  }",
+        "",
+        "  beta() {",
+        "    return 2;",
+        "  }",
+        "}",
+      ].join("\n"),
+      "ts"
+    );
+    editor.selection = new vscode.Selection(5, 3, 5, 3);
+
+    await swapWithPreviousSibling();
+
+    assert.strictEqual(
+      editor.document.getText(),
+      [
+        "class Example {",
+        "  beta() {",
+        "    return 2;",
+        "  }",
+        "",
+        "  alpha() {",
+        "    return 1;",
+        "  }",
+        "}",
+      ].join("\n")
+    );
+    assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "beta()", 0, 1));
+  });
+
+  test("swapWithPreviousSibling keeps exported TypeScript declaration prefixes intact", async () => {
+    const editor = await showTestEditor(
+      [
+        "export interface BlobLight {",
+        "  xPx: number;",
+        "  yPx: number;",
+        "  radiusPx: number;",
+        "  color: [number, number, number];",
+        "  intensity: number;",
+        "}",
+        "",
+        "export interface BlobLightSnapshot {",
+        "  lights: BlobLight[];",
+        "  cursorYPx: number;",
+        "  cursorXPx: number;",
+        "  hasCursor: boolean;",
+        "  timestamp: number;",
+        "}",
+        "",
+        "export interface BlobLightSource {",
+        "  subscribe: (run: (snapshot: BlobLightSnapshot) => void) => () => void;",
+        "  getSnapshot: () => BlobLightSnapshot;",
+        "}",
+        "",
+        "export const BLOB_LIGHT_CONTEXT = Symbol('blob-light-context');",
+        "",
+        "export const EMPTY_BLOB_LIGHT_SNAPSHOT: BlobLightSnapshot = {",
+        "  lights: [],",
+        "  cursorXPx: 0,",
+        "  cursorYPx: 0,",
+        "  hasCursor: false,",
+        "  timestamp: 0",
+        "};",
+      ].join("\n"),
+      "ts"
+    );
+    editor.selection = new vscode.Selection(
+      positionAtText(editor.document, "BLOB_LIGHT_CONTEXT"),
+      positionAtText(editor.document, "BLOB_LIGHT_CONTEXT")
+    );
+
+    await swapWithPreviousSibling();
+
+    assert.strictEqual(
+      editor.document.getText(),
+      [
+        "export interface BlobLight {",
+        "  xPx: number;",
+        "  yPx: number;",
+        "  radiusPx: number;",
+        "  color: [number, number, number];",
+        "  intensity: number;",
+        "}",
+        "",
+        "export interface BlobLightSnapshot {",
+        "  lights: BlobLight[];",
+        "  cursorYPx: number;",
+        "  cursorXPx: number;",
+        "  hasCursor: boolean;",
+        "  timestamp: number;",
+        "}",
+        "",
+        "export const BLOB_LIGHT_CONTEXT = Symbol('blob-light-context');",
+        "",
+        "export interface BlobLightSource {",
+        "  subscribe: (run: (snapshot: BlobLightSnapshot) => void) => () => void;",
+        "  getSnapshot: () => BlobLightSnapshot;",
+        "}",
+        "",
+        "export const EMPTY_BLOB_LIGHT_SNAPSHOT: BlobLightSnapshot = {",
+        "  lights: [],",
+        "  cursorXPx: 0,",
+        "  cursorYPx: 0,",
+        "  hasCursor: false,",
+        "  timestamp: 0",
+        "};",
+      ].join("\n")
+    );
+    assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, "BLOB_LIGHT_CONTEXT"));
+  });
+
+  test("swapWithNextSibling swaps adjacent JSON object properties", async () => {
+    const editor = await showTestEditor(
+      [
+        "{",
+        '  "type": "object",',
+        '  "$id": "Item.json",',
+        '  "title": "Item"',
+        "}",
+      ].join("\n"),
+      "json"
+    );
+    editor.selection = new vscode.Selection(
+      positionAtText(editor.document, '"$id"', 0, 1),
+      positionAtText(editor.document, '"$id"', 0, 1)
+    );
+
+    await swapWithNextSibling();
+
+    assert.strictEqual(
+      editor.document.getText(),
+      [
+        "{",
+        '  "type": "object",',
+        '  "title": "Item",',
+        '  "$id": "Item.json"',
+        "}",
+      ].join("\n")
+    );
+    assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, '"$id"', 0, 1));
+  });
+
+  test("swapWithPreviousSibling swaps adjacent JSON array items", async () => {
+    const editor = await showTestEditor(
+      [
+        "[",
+        '  "one",',
+        '  "two",',
+        '  "three"',
+        "]",
+      ].join("\n"),
+      "json"
+    );
+    editor.selection = new vscode.Selection(
+      positionAtText(editor.document, '"two"', 0, 1),
+      positionAtText(editor.document, '"two"', 0, 1)
+    );
+
+    await swapWithPreviousSibling();
+
+    assert.strictEqual(
+      editor.document.getText(),
+      [
+        "[",
+        '  "two",',
+        '  "one",',
+        '  "three"',
+        "]",
+      ].join("\n")
+    );
+    assert.deepStrictEqual(editor.selection.active, positionAtText(editor.document, '"two"', 0, 1));
+  });
+
+  test("swapWithNextSibling does not wrap when there is no next sibling", async () => {
+    const editor = await showTestEditor(
+      [
+        "function first() {",
+        "  return 1;",
+        "}",
+        "",
+        "function second() {",
+        "  return 2;",
+        "}",
+      ].join("\n"),
+      "ts"
+    );
+    editor.selection = new vscode.Selection(4, 10, 4, 10);
+
+    await swapWithNextSibling();
+
+    assert.strictEqual(
+      editor.document.getText(),
+      [
+        "function first() {",
+        "  return 1;",
+        "}",
+        "",
+        "function second() {",
+        "  return 2;",
+        "}",
+      ].join("\n")
+    );
+    assert.deepStrictEqual(editor.selection.active, new vscode.Position(4, 10));
   });
 });

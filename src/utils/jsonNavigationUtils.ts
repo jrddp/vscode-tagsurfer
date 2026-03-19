@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { asBracketLoc, findPairedBracketPos } from "./bracketUtils";
+import { buildSiblingSwapOperation, type SiblingSwapOperation } from "./siblingSwapUtils";
 
 type Direction = "next" | "previous";
 
@@ -383,6 +384,20 @@ function findSiblingTarget(
   return siblings[(currentIndex + delta + siblings.length) % siblings.length] ?? null;
 }
 
+function findSwapTarget(
+  siblings: readonly JsonNavNode[],
+  currentIndex: number,
+  direction: Direction
+): JsonNavNode | null {
+  if (currentIndex === -1) {
+    return null;
+  }
+
+  return direction === "next"
+    ? siblings[currentIndex + 1] ?? null
+    : siblings[currentIndex - 1] ?? null;
+}
+
 function findOnlySiblingMatchingPairTarget(
   document: vscode.TextDocument,
   offset: number
@@ -525,6 +540,48 @@ export function findJsonSiblingPositions(
       );
       return targetOffset === null ? null : document.positionAt(targetOffset);
     }),
+  };
+}
+
+export function findJsonSiblingSwapOperation(
+  document: vscode.TextDocument,
+  selection: vscode.Selection,
+  direction: Direction
+): { hasSymbols: boolean; operation: SiblingSwapOperation | null } | null {
+  const tree = parseJsonNavigationTree(document);
+  if (!tree) {
+    return null;
+  }
+
+  if (tree.roots.length === 0) {
+    return {
+      hasSymbols: false,
+      operation: null,
+    };
+  }
+
+  const currentOffset = document.offsetAt(selection.active);
+  const currentNode = findDeepestContainingNode(tree.roots, currentOffset);
+  if (!currentNode) {
+    return {
+      hasSymbols: true,
+      operation: null,
+    };
+  }
+
+  const siblings = currentNode.parent?.children ?? tree.roots;
+  const currentIndex = siblings.indexOf(currentNode);
+  const swapTarget = findSwapTarget(siblings, currentIndex, direction);
+  if (!swapTarget) {
+    return {
+      hasSymbols: true,
+      operation: null,
+    };
+  }
+
+  return {
+    hasSymbols: true,
+    operation: buildSiblingSwapOperation(document, currentNode, swapTarget, currentOffset),
   };
 }
 

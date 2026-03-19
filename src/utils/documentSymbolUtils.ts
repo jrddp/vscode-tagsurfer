@@ -3,8 +3,10 @@ import * as vscode from "vscode";
 import {
   findJsonChildPositions,
   findJsonParentPositions,
+  findJsonSiblingSwapOperation,
   findJsonSiblingPositions,
 } from "./jsonNavigationUtils";
+import { buildSiblingSwapOperation, type SiblingSwapOperation } from "./siblingSwapUtils";
 import { findPairedTag, getEnclosingTag, type Tag } from "./tagUtils";
 
 type Direction = "next" | "previous";
@@ -313,6 +315,38 @@ async function getNavigableSymbols(document: vscode.TextDocument): Promise<Norma
   return normalizeSymbols(asDocumentSymbols(symbols), null);
 }
 
+function getSymbolSwapRange(
+  document: vscode.TextDocument,
+  symbol: vscode.DocumentSymbol
+): { startOffset: number; endOffset: number } {
+  const startLine = document.lineAt(symbol.range.start.line);
+  const startOffset = document.offsetAt(
+    new vscode.Position(symbol.range.start.line, startLine.firstNonWhitespaceCharacterIndex)
+  );
+
+  let endLineNumber = symbol.range.end.line;
+  if (symbol.range.end.character === 0 && symbol.range.end.line > symbol.range.start.line) {
+    endLineNumber -= 1;
+  }
+
+  const endOffset = document.offsetAt(document.lineAt(endLineNumber).range.end);
+  return { startOffset, endOffset };
+}
+
+function findSwapTarget(
+  siblings: readonly NormalizedSymbol[],
+  currentIndex: number,
+  direction: Direction
+): NormalizedSymbol | null {
+  if (currentIndex === -1) {
+    return null;
+  }
+
+  return direction === "next"
+    ? siblings[currentIndex + 1] ?? null
+    : siblings[currentIndex - 1] ?? null;
+}
+
 export async function findSiblingSymbolPositions(
   document: vscode.TextDocument,
   selections: readonly vscode.Selection[],
@@ -335,6 +369,53 @@ export async function findSiblingSymbolPositions(
     hasSymbols: true,
     positions: selections.map(selection =>
       findSiblingPositionTarget(document, roots, selection.active, direction)
+    ),
+  };
+}
+
+export async function findSiblingSwapOperation(
+  document: vscode.TextDocument,
+  selection: vscode.Selection,
+  direction: Direction
+): Promise<{ hasSymbols: boolean; operation: SiblingSwapOperation | null }> {
+  const jsonResult = findJsonSiblingSwapOperation(document, selection, direction);
+  if (jsonResult) {
+    return jsonResult;
+  }
+
+  const roots = await getNavigableSymbols(document);
+  if (roots.length === 0) {
+    return {
+      hasSymbols: false,
+      operation: null,
+    };
+  }
+
+  const currentSymbol = findDeepestContainingSymbol(roots, selection.active);
+  if (!currentSymbol) {
+    return {
+      hasSymbols: true,
+      operation: null,
+    };
+  }
+
+  const siblings = currentSymbol.parent?.children ?? roots;
+  const currentIndex = siblings.indexOf(currentSymbol);
+  const swapTarget = findSwapTarget(siblings, currentIndex, direction);
+  if (!swapTarget) {
+    return {
+      hasSymbols: true,
+      operation: null,
+    };
+  }
+
+  return {
+    hasSymbols: true,
+    operation: buildSiblingSwapOperation(
+      document,
+      getSymbolSwapRange(document, currentSymbol.symbol),
+      getSymbolSwapRange(document, swapTarget.symbol),
+      document.offsetAt(selection.active)
     ),
   };
 }

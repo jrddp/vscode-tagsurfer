@@ -56,6 +56,14 @@
       {
         "command": "tagSurfer.jumpToChildSymbol",
         "title": "TagSurfer: Jump to Child"
+      },
+      {
+        "command": "tagSurfer.swapWithNextSiblingSymbol",
+        "title": "TagSurfer: Swap with Next Sibling"
+      },
+      {
+        "command": "tagSurfer.swapWithPreviousSiblingSymbol",
+        "title": "TagSurfer: Swap with Previous Sibling"
       }
     ],
     "configuration": {
